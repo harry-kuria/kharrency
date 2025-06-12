@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.android.library) apply false
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.hilt) apply false
+        //alias(libs.plugins.ksp) apply false
+
 }
 
 buildscript {
@@ -12,7 +14,5 @@ buildscript {
         mavenCentral()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     }
-    dependencies {
-        classpath("org.jetbrains.compose:compose-gradle-plugin:1.5.11")
-    }
+
 }
