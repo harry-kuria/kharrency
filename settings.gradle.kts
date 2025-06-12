@@ -21,4 +21,8 @@ dependencyResolutionManagement {
 
 rootProject.name = "kharrency"
 include(":app")
- 
+include(":repository")
+include(":database")
+include(":model")
+include(":composables")
+include(":viewmodels")
