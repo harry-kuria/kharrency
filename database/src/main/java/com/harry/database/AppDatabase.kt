@@ -14,4 +14,15 @@ import com.harry.model.ExchangeRateEntity
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun exchangeRateDao(): ExchangeRateDao
+
+    companion object {
+        @Volatile
+        private var INSTANCE: AppDatabase? = null
+
+        fun getInstance(databaseBuilder: androidx.room.RoomDatabase.Builder<AppDatabase>): AppDatabase {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: databaseBuilder.build().also { INSTANCE = it }
+            }
+        }
+    }
 } 

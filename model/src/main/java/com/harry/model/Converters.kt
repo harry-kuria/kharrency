@@ -5,25 +5,26 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
 class Converters {
+    private val gson = Gson()
+    private val mapType = object : TypeToken<Map<String, Double>>() {}.type
+
     @TypeConverter
-    fun fromString(value: String?): Map<String, Double> {
-        if (value == null) return emptyMap()
+    fun fromString(value: String?): Map<String, Double>? {
+        if (value == null) return null
         return try {
-            val type = object : TypeToken<Map<String, Double>>() {}.type
-            Gson().fromJson(value, type) ?: emptyMap()
+            gson.fromJson(value, mapType)
         } catch (e: Exception) {
-            emptyMap()
+            null
         }
     }
 
     @TypeConverter
-    fun fromMap(map: Map<String, Double>?): String {
-        if (map == null) return "{}"
+    fun fromMap(map: Map<String, Double>?): String? {
+        if (map == null) return null
         return try {
-            val type = object : TypeToken<Map<String, Double>>() {}.type
-            Gson().toJson(map, type)
+            gson.toJson(map, mapType)
         } catch (e: Exception) {
-            "{}"
+            null
         }
     }
-} 
+}
