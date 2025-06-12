@@ -1,4 +1,3 @@
-/* <<<<<<<<<<<<<<  ✨ Windsurf Command 🌟 >>>>>>>>>>>>>>>> */
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -9,15 +8,8 @@ plugins {
 
 android {
     namespace = "com.kharrency.model"
-    compileSdk = 34
+    compileSdk = 35
 
-    defaultConfig {
-        minSdk = 24
-        targetSdk = 34
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles("consumer-rules.pro")
-    }
 
     buildTypes {
         release {
@@ -39,7 +31,7 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
+        kotlinCompilerExtensionVersion = "1.5.14"
     }
 }
 
@@ -47,6 +39,11 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
+    implementation(libs.androidx.compose.runtime.runtime)
+    implementation(libs.androidx.compose.ui.ui)
+    implementation(libs.ui.tooling.preview)
+    implementation(libs.material3)
+    implementation(platform(libs.androidx.compose.bom.v20250600))
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.hilt.android)
@@ -62,4 +59,3 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
-/* <<<<<<<<<<  69ee7638-990a-4688-81b5-8456d7a27848  >>>>>>>>>>> */

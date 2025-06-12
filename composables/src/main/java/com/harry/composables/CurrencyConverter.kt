@@ -1,6 +1,7 @@
 package com.harry.composables
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -10,6 +11,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.harry.viewmodels.DashboardViewModel
 import com.harry.viewmodels.DashboardState
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CurrencyConverter(
     viewModel: DashboardViewModel = hiltViewModel()
@@ -57,7 +59,7 @@ fun CurrencyConverter(
             // Swap Button
             IconButton(onClick = { viewModel.swapCurrencies() }) {
                 Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Default.SwapHoriz,
+                    imageVector = androidx.compose.material.icons.Icons.Default.Refresh,
                     contentDescription = "Swap currencies"
                 )
             }
