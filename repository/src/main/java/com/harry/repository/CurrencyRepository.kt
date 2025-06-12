@@ -3,7 +3,6 @@ package com.harry.repository
 import android.os.Build
 import androidx.annotation.RequiresApi
 import com.harry.database.AppDatabase
-import com.harry.database.ExchangeRateEntity
 import com.harry.model.ExchangeRateEntity
 import com.harry.database.ExchangeRateDao
 import kotlinx.coroutines.Dispatchers
@@ -18,18 +17,41 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
+import java.io.IOException
+import java.net.SocketTimeoutException
 
 interface ExchangeRateApi {
     @GET("latest")
     suspend fun getLatestRates(
-        @Query("base") base: String
+        @Query("base") base: String,
+        @Query("symbols") symbols: String? = null
+    ): ExchangeRateResponse
+
+    @GET("historical")
+    suspend fun getHistoricalRates(
+        @Query("base") base: String,
+        @Query("date") date: String,
+        @Query("symbols") symbols: String? = null
     ): ExchangeRateResponse
 }
 
 data class ExchangeRateResponse(
     val base: String,
-    val rates: Map<String, Double>
+    val rates: Map<String, Double>,
+    val date: String? = null,
+    val success: Boolean = true,
+    val error: ErrorResponse? = null
 )
+
+data class ErrorResponse(
+    val code: String,
+    val message: String
+)
+
+sealed class ExchangeRateResult {
+    data class Success(val rates: Map<String, Double>) : ExchangeRateResult()
+    data class Error(val message: String) : ExchangeRateResult()
+}
 
 @Singleton
 class CurrencyRepository @Inject constructor(
@@ -47,7 +69,7 @@ class CurrencyRepository @Inject constructor(
         amount: Double,
         fromCurrency: String,
         toCurrency: String
-    ): Double = withContext(Dispatchers.IO) {
+    ): ExchangeRateResult = withContext(Dispatchers.IO) {
         try {
             // Try to get cached rates first
             val cachedRates = database.exchangeRateDao()
@@ -60,11 +82,16 @@ class CurrencyRepository @Inject constructor(
                 cachedRates.rates
             } else {
                 // Fetch new rates from API
-                val response = api.getLatestRates(fromCurrency)
+                val response = api.getLatestRates(fromCurrency, toCurrency)
+                if (!response.success) {
+                    return@withContext ExchangeRateResult.Error(
+                        response.error?.message ?: "Unknown error occurred"
+                    )
+                }
                 // Cache the new rates
                 database.exchangeRateDao().insertExchangeRates(
                     ExchangeRateEntity(
-                        baseCurrency = fromCurrency,
+                        base = fromCurrency,
                         rates = response.rates,
                         timestamp = LocalDateTime.now()
                     )
@@ -72,10 +99,33 @@ class CurrencyRepository @Inject constructor(
                 response.rates
             }
 
-            val rate = rates[toCurrency] ?: throw Exception("Currency not supported")
-            amount * rate
+            val rate = rates[toCurrency] ?: return@withContext ExchangeRateResult.Error("Currency not supported")
+            ExchangeRateResult.Success(mapOf(toCurrency to (amount * rate)))
+        } catch (e: SocketTimeoutException) {
+            ExchangeRateResult.Error("Network timeout. Please check your connection.")
+        } catch (e: IOException) {
+            ExchangeRateResult.Error("Network error. Please check your connection.")
         } catch (e: Exception) {
-            throw Exception("Failed to fetch exchange rate: ${e.message}")
+            ExchangeRateResult.Error("Failed to fetch exchange rate: ${e.message}")
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun getHistoricalRates(
+        base: String,
+        date: String,
+        symbols: String? = null
+    ): ExchangeRateResult = withContext(Dispatchers.IO) {
+        try {
+            val response = api.getHistoricalRates(base, date, symbols)
+            if (!response.success) {
+                return@withContext ExchangeRateResult.Error(
+                    response.error?.message ?: "Unknown error occurred"
+                )
+            }
+            ExchangeRateResult.Success(response.rates)
+        } catch (e: Exception) {
+            ExchangeRateResult.Error("Failed to fetch historical rates: ${e.message}")
         }
     }
 
@@ -100,6 +150,7 @@ class CurrencyRepository @Inject constructor(
         exchangeRateDao.insertExchangeRate(exchangeRate)
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     suspend fun deleteOldRates(timestamp: LocalDateTime) {
         exchangeRateDao.deleteOldRates(timestamp.toEpochSecond(ZoneOffset.UTC))
     }
