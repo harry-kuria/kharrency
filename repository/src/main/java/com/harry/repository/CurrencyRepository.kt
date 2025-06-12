@@ -1,12 +1,17 @@
 package com.harry.repository
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import com.harry.database.AppDatabase
 import com.harry.database.ExchangeRateEntity
+import com.harry.model.ExchangeRateEntity
+import com.harry.database.ExchangeRateDao
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
+import java.time.ZoneOffset
 import javax.inject.Inject
 import javax.inject.Singleton
 import retrofit2.Retrofit
@@ -28,7 +33,8 @@ data class ExchangeRateResponse(
 
 @Singleton
 class CurrencyRepository @Inject constructor(
-    private val database: AppDatabase
+    private val database: AppDatabase,
+    private val exchangeRateDao: ExchangeRateDao
 ) {
     private val api = Retrofit.Builder()
         .baseUrl("https://api.exchangerate.host/")
@@ -36,6 +42,7 @@ class CurrencyRepository @Inject constructor(
         .build()
         .create(ExchangeRateApi::class.java)
 
+    @RequiresApi(Build.VERSION_CODES.O)
     suspend fun convertCurrency(
         amount: Double,
         fromCurrency: String,
@@ -73,10 +80,27 @@ class CurrencyRepository @Inject constructor(
     }
 
     // Clean up old rates periodically
+    @RequiresApi(Build.VERSION_CODES.O)
     suspend fun cleanupOldRates() {
         withContext(Dispatchers.IO) {
             val oneDayAgo = LocalDateTime.now().minus(1, ChronoUnit.DAYS)
             database.exchangeRateDao().deleteOldRates(oneDayAgo)
         }
+    }
+
+    fun getExchangeRates(): Flow<List<ExchangeRateEntity>> {
+        return exchangeRateDao.getExchangeRates()
+    }
+
+    fun getLatestExchangeRate(base: String): Flow<ExchangeRateEntity?> {
+        return exchangeRateDao.getLatestExchangeRate(base)
+    }
+
+    suspend fun insertExchangeRate(exchangeRate: ExchangeRateEntity) {
+        exchangeRateDao.insertExchangeRate(exchangeRate)
+    }
+
+    suspend fun deleteOldRates(timestamp: LocalDateTime) {
+        exchangeRateDao.deleteOldRates(timestamp.toEpochSecond(ZoneOffset.UTC))
     }
 } 

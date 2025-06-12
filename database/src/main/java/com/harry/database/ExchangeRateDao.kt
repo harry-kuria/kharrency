@@ -1,18 +1,20 @@
 package com.harry.database
 
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
 import com.harry.model.ExchangeRateEntity
 import kotlinx.coroutines.flow.Flow
-import java.time.LocalDateTime
 
 @Dao
 interface ExchangeRateDao {
-    @Query("SELECT * FROM exchange_rates WHERE baseCurrency = :baseCurrency")
-    fun getExchangeRates(baseCurrency: String): Flow<ExchangeRateEntity?>
+    @Query("SELECT * FROM exchange_rates ORDER BY timestamp DESC")
+    fun getExchangeRates(): Flow<List<ExchangeRateEntity>>
+
+    @Query("SELECT * FROM exchange_rates WHERE base = :base ORDER BY timestamp DESC LIMIT 1")
+    fun getLatestExchangeRate(base: String): Flow<ExchangeRateEntity?>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertExchangeRates(exchangeRate: ExchangeRateEntity)
-
-    @Query("DELETE FROM exchange_rates WHERE timestamp < :timestamp")
-    suspend fun deleteOldRates(timestamp: LocalDateTime)
+    fun insertExchangeRate(exchangeRate: ExchangeRateEntity): Long
 } 

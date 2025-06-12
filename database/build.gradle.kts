@@ -36,13 +36,10 @@ android {
 }
 
 dependencies {
-    implementation(project(":model"))
-
     // Room
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    implementation(libs.androidx.room.common.jvm)
-    kapt("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-runtime:2.5.2")
+    implementation("androidx.room:room-ktx:2.5.2")
+    kapt("androidx.room:room-compiler:2.5.2")
 
     // Hilt
     implementation("com.google.dagger:hilt-android:2.48")
@@ -51,6 +48,12 @@ dependencies {
     // Kotlin Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+
+    // Gson
+    implementation("com.google.code.gson:gson:2.10.1")
+
+    // Project modules
+    implementation(project(":model"))
 
     // Testing
     testImplementation("junit:junit:4.13.2")
