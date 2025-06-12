@@ -9,8 +9,11 @@ import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-
+import com.harry.composables.ConversionRecord
+import java.time.LocalDateTime
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 data class DashboardState(
     val amount: String = "",
@@ -18,17 +21,19 @@ data class DashboardState(
     val toCurrency: String = "EUR",
     val result: String = "0.00",
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val conversionHistory: List<ConversionRecord> = emptyList()
 )
 
 @HiltViewModel
-class DashboardViewModel
-@Inject constructor(
-
-
+class DashboardViewModel @Inject constructor(
+    private val repository: CurrencyRepository // TODO: Create this repository
 ) : ViewModel() {
     private val _state = MutableStateFlow(DashboardState())
     val state: StateFlow<DashboardState> = _state.asStateFlow()
+
+    private val _conversionHistory = MutableSharedFlow<List<ConversionRecord>>()
+    val conversionHistory: SharedFlow<List<ConversionRecord>> = _conversionHistory.asSharedFlow()
 
     fun updateAmount(amount: String) {
         _state.update { it.copy(amount = amount) }
@@ -58,22 +63,38 @@ class DashboardViewModel
             return
         }
 
-        // TODO: Implement actual currency conversion using a repository
-        // For now, we'll just show a placeholder result
         _state.update { it.copy(
             isLoading = true,
             error = null
         ) }
 
-        // Simulate API call
-        kotlinx.coroutines.MainScope().launch {
+        viewModelScope.launch {
             try {
-                // TODO: Replace with actual conversion logic
-                val result = amount * 1.2 // Placeholder conversion rate
+                val result = repository.convertCurrency(
+                    amount = amount,
+                    fromCurrency = _state.value.fromCurrency,
+                    toCurrency = _state.value.toCurrency
+                )
+
+                // Add to conversion history
+                val newRecord = ConversionRecord(
+                    fromCurrency = _state.value.fromCurrency,
+                    toCurrency = _state.value.toCurrency,
+                    amount = amount,
+                    result = result,
+                    timestamp = LocalDateTime.now()
+                )
+
+                val updatedHistory = (_state.value.conversionHistory + newRecord)
+                    .takeLast(5) // Keep only last 5 conversions
+
                 _state.update { it.copy(
                     result = String.format("%.2f", result),
-                    isLoading = false
+                    isLoading = false,
+                    conversionHistory = updatedHistory
                 ) }
+
+                _conversionHistory.emit(updatedHistory)
             } catch (e: Exception) {
                 _state.update { it.copy(
                     error = "Failed to convert currency: ${e.message}",

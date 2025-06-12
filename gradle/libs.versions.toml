@@ -38,6 +38,7 @@ androidx-ui = "1.6.1"
 androidx-material3 = "1.2.0"
 androidx-navigation = "2.7.7"
 androidx-hilt-navigation = "1.1.0"
+roomCommonJvm = "2.7.1"
 
 [libraries]
 androidx-compose-bom-v20250500 = { module = "androidx.compose:compose-bom", version.ref = "composeBomVersion" }
@@ -75,6 +76,7 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "androidx-hilt-navigation" }
 ditto-core = { group = "io.github.raamcosta.compose-destinations", name = "core", version.ref = "ditto" }
 ditto-ksp = { group = "io.github.raamcosta.compose-destinations", name = "ksp", version.ref = "ditto" }
+androidx-room-common-jvm = { group = "androidx.room", name = "room-common-jvm", version.ref = "roomCommonJvm" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
