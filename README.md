@@ -78,3 +78,7 @@ Run tests using:
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details. 
+
+![Screenshot from 2025-06-13 09 42 57](https://github.com/user-attachments/assets/0e39a48f-6ea0-49f1-a7cb-9015cb0fc2bf)
+![Screenshot from 2025-06-13 09 42 57](https://github.com/user-attachments/assets/0e39a48f-6ea0-49f1-a7cb-9015cb0fc2bf)
+![Screenshot from 2025-06-13 09 42 57](https://github.com/user-attachments/assets/0e39a48f-6ea0-49f1-a7cb-9015cb0fc2bf)
