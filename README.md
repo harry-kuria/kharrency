@@ -80,5 +80,8 @@ Run tests using:
 This project is licensed under the MIT License - see the LICENSE file for details. 
 
 ![Screenshot from 2025-06-13 09 42 57](https://github.com/user-attachments/assets/0e39a48f-6ea0-49f1-a7cb-9015cb0fc2bf)
-![Screenshot from 2025-06-13 09 42 57](https://github.com/user-attachments/assets/0e39a48f-6ea0-49f1-a7cb-9015cb0fc2bf)
-![Screenshot from 2025-06-13 09 42 57](https://github.com/user-attachments/assets/0e39a48f-6ea0-49f1-a7cb-9015cb0fc2bf)
+![Screenshot from 2025-06-13 11 12 35](https://github.com/user-attachments/assets/2bff3dfc-1edc-4a2d-a944-5be76432f45d)
+![Screenshot from 2025-06-13 11 12 46](https://github.com/user-attachments/assets/46fd0b17-233e-4286-97f3-3e0815c6a482)
+![Screenshot from 2025-06-13 11 13 31](https://github.com/user-attachments/assets/364a7021-151a-4cc5-a509-9149324296c8)
+
+
