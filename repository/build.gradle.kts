@@ -44,20 +44,21 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
-    implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlin.coroutines.android)
+    implementation(libs.kotlin.coroutines.core)
     
     // Hilt
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
     
     // Room
-    implementation(libs.androidx.room.runtime)
-    kapt(libs.androidx.room.compiler)
+    implementation(libs.room.runtime)
+    kapt(libs.room.compiler)
     
     // Retrofit & Serialization
     implementation(libs.retrofit)
-    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.gson)
+    implementation(libs.retrofit.gson)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

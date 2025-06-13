@@ -19,6 +19,10 @@ import retrofit2.http.GET
 import retrofit2.http.Query
 import java.io.IOException
 import java.net.SocketTimeoutException
+import okhttp3.OkHttpClient
+import okhttp3.Interceptor
+import okhttp3.Response
+import java.util.concurrent.TimeUnit
 
 interface ExchangeRateApi {
     @GET("latest")
@@ -37,15 +41,16 @@ interface ExchangeRateApi {
 
 data class ExchangeRateResponse(
     val base: String,
-    val rates: Map<String, Double>,
+    val rates: Map<String, Double>?,
     val date: String? = null,
-    val success: Boolean = true,
+    val success: Boolean? = null,
     val error: ErrorResponse? = null
 )
 
 data class ErrorResponse(
-    val code: String,
-    val message: String
+    val code: String? = null,
+    val type: String? = null,
+    val info: String? = null
 )
 
 sealed class ExchangeRateResult {
@@ -53,13 +58,33 @@ sealed class ExchangeRateResult {
     data class Error(val message: String) : ExchangeRateResult()
 }
 
+private const val EXCHANGE_API_KEY = "oTqHxq5W7rz9Je6rnA7ADljddaJHN8f9"
+
+class ApiKeyInterceptor : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val original = chain.request()
+        val newRequest = original.newBuilder()
+            .addHeader("apikey", EXCHANGE_API_KEY)
+            .build()
+        return chain.proceed(newRequest)
+    }
+}
+
 @Singleton
 class CurrencyRepository @Inject constructor(
     private val database: AppDatabase,
     private val exchangeRateDao: ExchangeRateDao
 ) {
-    private val api = Retrofit.Builder()
-        .baseUrl("https://api.exchangerate.host/")
+    private val api: ExchangeRateApi = Retrofit.Builder()
+        .baseUrl("https://api.apilayer.com/exchangerates_data/")
+        .client(
+            OkHttpClient.Builder()
+                .addInterceptor(ApiKeyInterceptor())
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .build()
+        )
         .addConverterFactory(GsonConverterFactory.create())
         .build()
         .create(ExchangeRateApi::class.java)
@@ -73,33 +98,41 @@ class CurrencyRepository @Inject constructor(
         try {
             // Try to get cached rates first
             val cachedRates = database.exchangeRateDao()
-                .getExchangeRates(fromCurrency)
+                .getLatestExchangeRate(fromCurrency)
                 .firstOrNull()
 
-            val rates = if (cachedRates != null && 
-                ChronoUnit.HOURS.between(cachedRates.timestamp, LocalDateTime.now()) < 1) {
+            val ratesMap: Map<String, Double> = if (cachedRates != null &&
+                ChronoUnit.HOURS.between(
+                    LocalDateTime.ofEpochSecond(cachedRates.timestamp, 0, ZoneOffset.UTC),
+                    LocalDateTime.now()
+                ) < 1) {
                 // Use cached rates if they're less than 1 hour old
                 cachedRates.rates
             } else {
                 // Fetch new rates from API
                 val response = api.getLatestRates(fromCurrency, toCurrency)
-                if (!response.success) {
-                    return@withContext ExchangeRateResult.Error(
-                        response.error?.message ?: "Unknown error occurred"
-                    )
+
+                if (response.success == false || response.error != null) {
+                    val message = response.error?.info ?: response.error?.type ?: "API reported failure"
+                    return@withContext ExchangeRateResult.Error(message)
+                }
+
+                val apiRates = response.rates
+                if (apiRates == null || apiRates.isEmpty()) {
+                    return@withContext ExchangeRateResult.Error("No rates returned from server")
                 }
                 // Cache the new rates
-                database.exchangeRateDao().insertExchangeRates(
+                database.exchangeRateDao().insertExchangeRate(
                     ExchangeRateEntity(
                         base = fromCurrency,
-                        rates = response.rates,
-                        timestamp = LocalDateTime.now()
+                        rates = apiRates,
+                        timestamp = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)
                     )
                 )
-                response.rates
+                apiRates
             }
 
-            val rate = rates[toCurrency] ?: return@withContext ExchangeRateResult.Error("Currency not supported")
+            val rate = ratesMap[toCurrency] ?: return@withContext ExchangeRateResult.Error("Currency not supported")
             ExchangeRateResult.Success(mapOf(toCurrency to (amount * rate)))
         } catch (e: SocketTimeoutException) {
             ExchangeRateResult.Error("Network timeout. Please check your connection.")
@@ -118,12 +151,11 @@ class CurrencyRepository @Inject constructor(
     ): ExchangeRateResult = withContext(Dispatchers.IO) {
         try {
             val response = api.getHistoricalRates(base, date, symbols)
-            if (!response.success) {
-                return@withContext ExchangeRateResult.Error(
-                    response.error?.message ?: "Unknown error occurred"
-                )
+
+            if (response.success == false || response.error != null) {
+                return@withContext ExchangeRateResult.Error(response.error?.info ?: "API error")
             }
-            ExchangeRateResult.Success(response.rates)
+            response.rates?.let { ExchangeRateResult.Success(it) } ?: ExchangeRateResult.Error("No rates returned")
         } catch (e: Exception) {
             ExchangeRateResult.Error("Failed to fetch historical rates: ${e.message}")
         }
@@ -134,7 +166,7 @@ class CurrencyRepository @Inject constructor(
     suspend fun cleanupOldRates() {
         withContext(Dispatchers.IO) {
             val oneDayAgo = LocalDateTime.now().minus(1, ChronoUnit.DAYS)
-            database.exchangeRateDao().deleteOldRates(oneDayAgo)
+            database.exchangeRateDao().deleteOldRates(oneDayAgo.toEpochSecond(ZoneOffset.UTC))
         }
     }
 

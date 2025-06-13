@@ -9,11 +9,13 @@ import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
-import com.harry.composables.ConversionRecord
+import com.harry.model.ConversionRecord
 import java.time.LocalDateTime
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import com.harry.repository.CurrencyRepository
+import com.harry.repository.ExchangeRateResult
 
 data class DashboardState(
     val amount: String = "",
@@ -70,31 +72,41 @@ class DashboardViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                val result = repository.convertCurrency(
+                when (val result = repository.convertCurrency(
                     amount = amount,
                     fromCurrency = _state.value.fromCurrency,
                     toCurrency = _state.value.toCurrency
-                )
+                )) {
+                    is ExchangeRateResult.Success -> {
+                        val rateResult = result.rates[_state.value.toCurrency] ?: 0.0
 
-                // Add to conversion history
-                val newRecord = ConversionRecord(
-                    fromCurrency = _state.value.fromCurrency,
-                    toCurrency = _state.value.toCurrency,
-                    amount = amount,
-                    result = result,
-                    timestamp = LocalDateTime.now()
-                )
+                        // Add to conversion history
+                        val newRecord = ConversionRecord(
+                            fromCurrency = _state.value.fromCurrency,
+                            toCurrency = _state.value.toCurrency,
+                            amount = amount,
+                            result = rateResult,
+                            timestamp = LocalDateTime.now()
+                        )
 
-                val updatedHistory = (_state.value.conversionHistory + newRecord)
-                    .takeLast(5) // Keep only last 5 conversions
+                        val updatedHistory = (_state.value.conversionHistory + newRecord)
+                            .takeLast(5) // Keep only last 5 conversions
 
-                _state.update { it.copy(
-                    result = String.format("%.2f", result),
-                    isLoading = false,
-                    conversionHistory = updatedHistory
-                ) }
+                        _state.update { it.copy(
+                            result = String.format("%.2f", rateResult),
+                            isLoading = false,
+                            conversionHistory = updatedHistory
+                        ) }
 
-                _conversionHistory.emit(updatedHistory)
+                        _conversionHistory.emit(updatedHistory)
+                    }
+                    is ExchangeRateResult.Error -> {
+                        _state.update { it.copy(
+                            error = result.message,
+                            isLoading = false
+                        ) }
+                    }
+                }
             } catch (e: Exception) {
                 _state.update { it.copy(
                     error = "Failed to convert currency: ${e.message}",
