@@ -4,7 +4,7 @@ A modern Android currency converter app built with Jetpack Compose, following MV
 
 ## Features
 
-- Real-time currency conversion using [ExchangeRate.host](https://api.exchangerate.host/)
+- Real-time currency conversion using [ExchangeRate.host](https://api.exchangerate.host/latest)
 - Support for USD, EUR, and JPY currencies
 - Conversion history tracking (last 5 conversions)
 - Offline support with local caching
@@ -50,7 +50,7 @@ app/
 ## Testing
 
 The project includes unit tests for:
-- ViewModel logic
+- ViewModel logic (minimum 3 tests)
 - Repository operations
 - Data caching
 
@@ -58,6 +58,22 @@ Run tests using:
 ```bash
 ./gradlew test
 ```
+
+## Technical Requirements
+
+### Core Features
+- Real-time currency rates from ExchangeRate.host API
+- Support for USD, EUR, and JPY currencies
+- Last 5 conversion history tracking
+- Offline support with local caching
+- Network error handling
+
+### Technical Constraints
+- MVVM architecture
+- Kotlin Coroutines and Flow for async operations
+- Hilt for dependency injection
+- Room for local caching
+- Minimum 3 unit tests for ViewModel/Repository
 
 ## License
 
