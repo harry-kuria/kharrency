@@ -23,6 +23,7 @@ dependencyResolutionManagement {
     }
 }
 
+
 rootProject.name = "kharrency"
 include(":app")
 include(":repository")
