@@ -1,5 +1,7 @@
 package com.harry.composables
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,6 +21,7 @@ import com.harry.model.ConversionRecord
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ConversionHistory(
     conversions: List<ConversionRecord>,
@@ -99,6 +102,7 @@ fun ConversionHistory(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 private fun ConversionHistoryItem(conversion: ConversionRecord, isDarkMode: Boolean) {
     Card(
