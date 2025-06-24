@@ -4,7 +4,7 @@ A modern Android currency converter app built with Jetpack Compose, following MV
 
 ## Features
 
-- Real-time currency conversion using [ExchangeRate.host](https://api.exchangerate.host/latest)
+- Real-time currency conversion using [ExchangeRate-API](https://api.exchangerate-api.com)
 - Support for USD, EUR, and JPY currencies
 - Conversion history tracking (last 5 conversions)
 - Offline support with local caching
@@ -62,7 +62,7 @@ Run tests using:
 ## Technical Requirements
 
 ### Core Features
-- Real-time currency rates from ExchangeRate.host API
+- Real-time currency rates from ExchangeRate-API (free tier)
 - Support for USD, EUR, and JPY currencies
 - Last 5 conversion history tracking
 - Offline support with local caching

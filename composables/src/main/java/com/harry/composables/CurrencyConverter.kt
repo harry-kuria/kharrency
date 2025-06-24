@@ -1,19 +1,20 @@
 package com.harry.composables
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.harry.composables.components.CurrencyDropdown
 import com.harry.viewmodels.DashboardViewModel
 import com.harry.viewmodels.DashboardState
 
@@ -24,94 +25,176 @@ fun CurrencyConverter(
 ) {
     val state by viewModel.state.collectAsState()
 
-    // Simple static list; ideally fetch from repo or constants
-    val currencies = listOf("USD", "EUR", "GBP", "JPY", "AUD", "CAD")
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
+        // Amount Input Section
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
-            // Amount Input
+            Text(
+                text = "Amount",
+                style = MaterialTheme.typography.labelLarge.copy(
+                    color = Color(0xFF374151)
+                ),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
             OutlinedTextField(
                 value = state.amount,
                 onValueChange = { viewModel.updateAmount(it) },
-                label = { Text("Amount") },
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                placeholder = { 
+                    Text(
+                        "Enter amount",
+                        color = Color(0xFF9CA3AF)
+                    ) 
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp)),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFF8B5CF6),
+                    unfocusedBorderColor = Color(0xFFE5E7EB),
+                    focusedContainerColor = Color(0xFFF9FAFB),
+                    unfocusedContainerColor = Color(0xFFF9FAFB)
                 ),
-                modifier = Modifier.fillMaxWidth()
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true
             )
+        }
 
-            // Currency Selection Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+        // Currency Selection Section
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // From Currency
+            Column(
+                modifier = Modifier.weight(1f)
             ) {
-                // From Currency
-                CurrencyDropdown(
-                    label = "From",
-                    value = state.fromCurrency,
-                    options = currencies,
-                    onCurrencySelected = { viewModel.updateFromCurrency(it) },
-                    modifier = Modifier.weight(1f)
+                Text(
+                    text = "From",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        color = Color(0xFF374151)
+                    ),
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
+                
+                CurrencySelector(
+                    selectedCurrency = state.fromCurrency,
+                    onCurrencySelected = { viewModel.updateFromCurrency(it) },
+                    label = ""
+                )
+            }
 
-                // Swap Button with rotation animation
-                var rotated by remember { mutableStateOf(false) }
-
-                IconButton(onClick = {
-                    rotated = !rotated
-                    viewModel.swapCurrencies()
-                }) {
+            // Swap Button
+            Box(
+                modifier = Modifier.padding(top = 24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                FilledIconButton(
+                    onClick = { viewModel.swapCurrencies() },
+                    modifier = Modifier.size(48.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = Color(0xFF8B5CF6),
+                        contentColor = Color.White
+                    )
+                ) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = "Swap currencies",
-                        modifier = Modifier.rotate(if (rotated) 180f else 0f)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
-
-                // To Currency
-                CurrencyDropdown(
-                    label = "To",
-                    value = state.toCurrency,
-                    options = currencies,
-                    onCurrencySelected = { viewModel.updateToCurrency(it) },
-                    modifier = Modifier.weight(1f)
-                )
             }
 
-            // Convert Button
-            Button(
-                onClick = { viewModel.convertCurrency() },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !state.isLoading
+            // To Currency
+            Column(
+                modifier = Modifier.weight(1f)
             ) {
-                if (state.isLoading) {
+                Text(
+                    text = "To",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        color = Color(0xFF374151)
+                    ),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                CurrencySelector(
+                    selectedCurrency = state.toCurrency,
+                    onCurrencySelected = { viewModel.updateToCurrency(it) },
+                    label = ""
+                )
+            }
+        }
+
+        // Convert Button
+        Button(
+            onClick = { viewModel.convertCurrency() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            enabled = !state.isLoading && state.amount.isNotEmpty(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF8B5CF6),
+                contentColor = Color.White,
+                disabledContainerColor = Color(0xFFE5E7EB),
+                disabledContentColor = Color(0xFF9CA3AF)
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            if (state.isLoading) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        color = Color.White,
                         strokeWidth = 2.dp
                     )
-                } else {
-                    Text("Convert")
+                    Text(
+                        "Converting...",
+                        style = MaterialTheme.typography.labelLarge
+                    )
                 }
-            }
-
-            // Result
-            if (state.result.isNotEmpty()) {
+            } else {
                 Text(
-                    text = state.result,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Bold
+                    "Convert Currency",
+                    style = MaterialTheme.typography.labelLarge
                 )
+            }
+        }
+
+        // Result Display
+        if (state.result != "0.00" && !state.isLoading) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFEDE9FE)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Converted Amount",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = Color(0xFF6B46C1)
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "${state.result} ${state.toCurrency}",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            color = Color(0xFF4C1D95)
+                        )
+                    )
+                }
             }
         }
     }

@@ -10,12 +10,17 @@ import javax.inject.Inject
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import com.harry.model.ConversionRecord
+import com.harry.model.ConversionHistory
 import java.time.LocalDateTime
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import com.harry.repository.CurrencyRepository
 import com.harry.repository.ExchangeRateResult
+import android.os.Build
+import androidx.annotation.RequiresApi
+import kotlinx.coroutines.flow.collectLatest
+import java.time.ZoneOffset
 
 data class DashboardState(
     val amount: String = "",
@@ -29,13 +34,54 @@ data class DashboardState(
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val repository: CurrencyRepository // TODO: Create this repository
+    private val repository: CurrencyRepository
 ) : ViewModel() {
     private val _state = MutableStateFlow(DashboardState())
     val state: StateFlow<DashboardState> = _state.asStateFlow()
 
     private val _conversionHistory = MutableSharedFlow<List<ConversionRecord>>()
     val conversionHistory: SharedFlow<List<ConversionRecord>> = _conversionHistory.asSharedFlow()
+
+    init {
+        loadConversionHistory()
+    }
+
+    private fun loadConversionHistory() {
+        viewModelScope.launch {
+            repository.getConversionHistory().collectLatest { historyList ->
+                val convertedHistory = historyList.map { it.toConversionRecord() }
+                _state.update { it.copy(conversionHistory = convertedHistory) }
+                _conversionHistory.emit(convertedHistory)
+            }
+        }
+    }
+
+    // Extension functions to convert between models
+    private fun ConversionHistory.toConversionRecord(): ConversionRecord {
+        return ConversionRecord(
+            fromCurrency = fromCurrency,
+            toCurrency = toCurrency,
+            amount = amount,
+            result = convertedAmount,
+            timestamp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                LocalDateTime.ofEpochSecond(timestamp, 0, ZoneOffset.UTC)
+            } else {
+                LocalDateTime.now()
+            }
+        )
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun ConversionRecord.toConversionHistory(): ConversionHistory {
+        return ConversionHistory(
+            fromCurrency = fromCurrency,
+            toCurrency = toCurrency,
+            amount = amount,
+            convertedAmount = result,
+            rate = result / amount,
+            timestamp = timestamp.toEpochSecond(ZoneOffset.UTC)
+        )
+    }
 
     fun updateAmount(amount: String) {
         _state.update { it.copy(amount = amount) }
@@ -80,25 +126,30 @@ class DashboardViewModel @Inject constructor(
                     is ExchangeRateResult.Success -> {
                         val rateResult = result.rates[_state.value.toCurrency] ?: 0.0
 
-                        // Add to conversion history
+                        // Create conversion record
                         val newRecord = ConversionRecord(
                             fromCurrency = _state.value.fromCurrency,
                             toCurrency = _state.value.toCurrency,
                             amount = amount,
                             result = rateResult,
-                            timestamp = LocalDateTime.now()
+                            timestamp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                LocalDateTime.now()
+                            } else {
+                                LocalDateTime.now()
+                            }
                         )
 
-                        val updatedHistory = (_state.value.conversionHistory + newRecord)
-                            .takeLast(5) // Keep only last 5 conversions
+                        // Save to database
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            repository.insertConversionHistory(newRecord.toConversionHistory())
+                        }
 
                         _state.update { it.copy(
                             result = String.format("%.2f", rateResult),
-                            isLoading = false,
-                            conversionHistory = updatedHistory
+                            isLoading = false
                         ) }
-
-                        _conversionHistory.emit(updatedHistory)
+                        
+                        // Note: conversion history will be updated automatically via the Flow in loadConversionHistory()
                     }
                     is ExchangeRateResult.Error -> {
                         _state.update { it.copy(

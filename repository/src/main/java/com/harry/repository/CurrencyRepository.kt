@@ -5,6 +5,8 @@ import androidx.annotation.RequiresApi
 import com.harry.database.AppDatabase
 import com.harry.model.ExchangeRateEntity
 import com.harry.database.ExchangeRateDao
+import com.harry.database.ConversionHistoryDao
+import com.harry.model.ConversionHistory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
@@ -20,22 +22,18 @@ import retrofit2.http.Query
 import java.io.IOException
 import java.net.SocketTimeoutException
 import okhttp3.OkHttpClient
-import okhttp3.Interceptor
-import okhttp3.Response
 import java.util.concurrent.TimeUnit
 
 interface ExchangeRateApi {
-    @GET("latest")
+    @GET("latest/{base}")
     suspend fun getLatestRates(
-        @Query("base") base: String,
-        @Query("symbols") symbols: String? = null
+        @retrofit2.http.Path("base") base: String
     ): ExchangeRateResponse
 
-    @GET("historical")
+    @GET("history/{base}/{date}")
     suspend fun getHistoricalRates(
-        @Query("base") base: String,
-        @Query("date") date: String,
-        @Query("symbols") symbols: String? = null
+        @retrofit2.http.Path("base") base: String,
+        @retrofit2.http.Path("date") date: String
     ): ExchangeRateResponse
 }
 
@@ -43,14 +41,7 @@ data class ExchangeRateResponse(
     val base: String,
     val rates: Map<String, Double>?,
     val date: String? = null,
-    val success: Boolean? = null,
-    val error: ErrorResponse? = null
-)
-
-data class ErrorResponse(
-    val code: String? = null,
-    val type: String? = null,
-    val info: String? = null
+    val success: Boolean? = true
 )
 
 sealed class ExchangeRateResult {
@@ -58,28 +49,16 @@ sealed class ExchangeRateResult {
     data class Error(val message: String) : ExchangeRateResult()
 }
 
-private const val EXCHANGE_API_KEY = "oTqHxq5W7rz9Je6rnA7ADljddaJHN8f9"
-
-class ApiKeyInterceptor : Interceptor {
-    override fun intercept(chain: Interceptor.Chain): Response {
-        val original = chain.request()
-        val newRequest = original.newBuilder()
-            .addHeader("apikey", EXCHANGE_API_KEY)
-            .build()
-        return chain.proceed(newRequest)
-    }
-}
-
 @Singleton
 class CurrencyRepository @Inject constructor(
     private val database: AppDatabase,
-    private val exchangeRateDao: ExchangeRateDao
+    private val exchangeRateDao: ExchangeRateDao,
+    private val conversionHistoryDao: ConversionHistoryDao
 ) {
     private val api: ExchangeRateApi = Retrofit.Builder()
-        .baseUrl("https://api.apilayer.com/exchangerates_data/")
+        .baseUrl("https://api.exchangerate-api.com/v4/")
         .client(
             OkHttpClient.Builder()
-                .addInterceptor(ApiKeyInterceptor())
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
@@ -110,17 +89,13 @@ class CurrencyRepository @Inject constructor(
                 cachedRates.rates
             } else {
                 // Fetch new rates from API
-                val response = api.getLatestRates(fromCurrency, toCurrency)
-
-                if (response.success == false || response.error != null) {
-                    val message = response.error?.info ?: response.error?.type ?: "API reported failure"
-                    return@withContext ExchangeRateResult.Error(message)
-                }
+                val response = api.getLatestRates(fromCurrency)
 
                 val apiRates = response.rates
                 if (apiRates == null || apiRates.isEmpty()) {
-                    return@withContext ExchangeRateResult.Error("No rates returned from server")
+                    return@withContext ExchangeRateResult.Error("No exchange rates available")
                 }
+                
                 // Cache the new rates
                 database.exchangeRateDao().insertExchangeRate(
                     ExchangeRateEntity(
@@ -132,7 +107,7 @@ class CurrencyRepository @Inject constructor(
                 apiRates
             }
 
-            val rate = ratesMap[toCurrency] ?: return@withContext ExchangeRateResult.Error("Currency not supported")
+            val rate = ratesMap[toCurrency] ?: return@withContext ExchangeRateResult.Error("Currency '$toCurrency' not supported")
             ExchangeRateResult.Success(mapOf(toCurrency to (amount * rate)))
         } catch (e: SocketTimeoutException) {
             ExchangeRateResult.Error("Network timeout. Please check your connection.")
@@ -146,15 +121,10 @@ class CurrencyRepository @Inject constructor(
     @RequiresApi(Build.VERSION_CODES.O)
     suspend fun getHistoricalRates(
         base: String,
-        date: String,
-        symbols: String? = null
+        date: String
     ): ExchangeRateResult = withContext(Dispatchers.IO) {
         try {
-            val response = api.getHistoricalRates(base, date, symbols)
-
-            if (response.success == false || response.error != null) {
-                return@withContext ExchangeRateResult.Error(response.error?.info ?: "API error")
-            }
+            val response = api.getHistoricalRates(base, date)
             response.rates?.let { ExchangeRateResult.Success(it) } ?: ExchangeRateResult.Error("No rates returned")
         } catch (e: Exception) {
             ExchangeRateResult.Error("Failed to fetch historical rates: ${e.message}")
@@ -185,5 +155,13 @@ class CurrencyRepository @Inject constructor(
     @RequiresApi(Build.VERSION_CODES.O)
     suspend fun deleteOldRates(timestamp: LocalDateTime) {
         exchangeRateDao.deleteOldRates(timestamp.toEpochSecond(ZoneOffset.UTC))
+    }
+
+    suspend fun insertConversionHistory(conversionHistory: ConversionHistory) {
+        conversionHistoryDao.insertConversion(conversionHistory)
+    }
+
+    fun getConversionHistory(): Flow<List<ConversionHistory>> {
+        return conversionHistoryDao.getRecentConversions(5) // Get last 5 conversions
     }
 } 
