@@ -16,12 +16,13 @@ import androidx.compose.ui.unit.dp
 fun NetworkError(
     message: String,
     onRetry: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isDarkMode: Boolean = false
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFFEF2F2)
+            containerColor = if (isDarkMode) Color(0xFF7F1D1D) else Color(0xFFFEF2F2)
         ),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -36,7 +37,7 @@ fun NetworkError(
             Icon(
                 imageVector = Icons.Default.Warning,
                 contentDescription = "Error",
-                tint = Color(0xFFDC2626),
+                tint = if (isDarkMode) Color(0xFFFCA5A5) else Color(0xFFDC2626),
                 modifier = Modifier.size(24.dp)
             )
             
@@ -47,13 +48,13 @@ fun NetworkError(
                 Text(
                     text = "Network Error",
                     style = MaterialTheme.typography.titleSmall.copy(
-                        color = Color(0xFFDC2626)
+                        color = if (isDarkMode) Color(0xFFFCA5A5) else Color(0xFFDC2626)
                     )
                 )
                 Text(
                     text = message,
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = Color(0xFF7F1D1D)
+                        color = if (isDarkMode) Color.White.copy(alpha = 0.9f) else Color(0xFF7F1D1D)
                     )
                 )
             }

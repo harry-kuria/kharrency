@@ -1,7 +1,5 @@
 package com.harry.composables
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,11 +19,11 @@ import com.harry.model.ConversionRecord
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ConversionHistory(
     conversions: List<ConversionRecord>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isDarkMode: Boolean = false
 ) {
     Column(
         modifier = modifier.fillMaxWidth()
@@ -38,13 +36,13 @@ fun ConversionHistory(
             Icon(
                 imageVector = Icons.Default.List,
                 contentDescription = "History",
-                tint = MaterialTheme.colorScheme.primary,
+                tint = Color(0xFF8B5CF6),
                 modifier = Modifier.size(24.dp)
             )
             Text(
                 text = "Recent Conversions",
                 style = MaterialTheme.typography.headlineSmall.copy(
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = if (isDarkMode) Color.White else Color(0xFF374151)
                 )
             )
         }
@@ -56,7 +54,7 @@ fun ConversionHistory(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = if (isDarkMode) Color(0xFF1F2937) else Color(0xFFF3F4F6)
                 ),
                 shape = RoundedCornerShape(12.dp)
             ) {
@@ -69,21 +67,21 @@ fun ConversionHistory(
                     Icon(
                         imageVector = Icons.Default.Info,
                         contentDescription = "No conversions",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = if (isDarkMode) Color.White.copy(alpha = 0.6f) else Color(0xFF6B7280),
                         modifier = Modifier.size(48.dp)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "No conversion history yet",
                         style = MaterialTheme.typography.titleMedium.copy(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (isDarkMode) Color.White else Color(0xFF374151)
                         )
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Start converting currencies to see your history here",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            color = if (isDarkMode) Color.White.copy(alpha = 0.7f) else Color(0xFF6B7280)
                         )
                     )
                 }
@@ -94,20 +92,19 @@ fun ConversionHistory(
                 modifier = Modifier.heightIn(max = 300.dp)
             ) {
                 items(conversions) { conversion ->
-                    ConversionHistoryItem(conversion)
+                    ConversionHistoryItem(conversion, isDarkMode)
                 }
             }
         }
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-private fun ConversionHistoryItem(conversion: ConversionRecord) {
+private fun ConversionHistoryItem(conversion: ConversionRecord, isDarkMode: Boolean) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = if (isDarkMode) Color(0xFF1F2937) else Color(0xFFF3F4F6)
         ),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -131,7 +128,7 @@ private fun ConversionHistoryItem(conversion: ConversionRecord) {
                     Box(
                         modifier = Modifier
                             .background(
-                                color = MaterialTheme.colorScheme.primaryContainer,
+                                color = if (isDarkMode) Color(0xFF2D1B69) else Color(0xFFEDE9FE),
                                 shape = RoundedCornerShape(6.dp)
                             )
                             .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -148,14 +145,14 @@ private fun ConversionHistoryItem(conversion: ConversionRecord) {
                 Text(
                     text = "${String.format("%.2f", conversion.amount)} ${conversion.fromCurrency}",
                     style = MaterialTheme.typography.bodyLarge.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = if (isDarkMode) Color.White else Color(0xFF374151)
                     )
                 )
                 
                 Text(
                     text = conversion.timestamp.format(DateTimeFormatter.ofPattern("MMM dd, HH:mm")),
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = Color(0xFF6B7280)
+                        color = if (isDarkMode) Color.White.copy(alpha = 0.7f) else Color(0xFF6B7280)
                     )
                 )
             }
@@ -175,7 +172,7 @@ private fun ConversionHistoryItem(conversion: ConversionRecord) {
                 Text(
                     text = "Rate: ${String.format("%.4f", conversion.result / conversion.amount)}",
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                        color = if (isDarkMode) Color.White.copy(alpha = 0.8f) else Color(0xFF6B7280)
                     )
                 )
             }

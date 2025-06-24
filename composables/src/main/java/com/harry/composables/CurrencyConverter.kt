@@ -21,7 +21,8 @@ import com.harry.viewmodels.DashboardState
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CurrencyConverter(
-    viewModel: DashboardViewModel = hiltViewModel()
+    viewModel: DashboardViewModel = hiltViewModel(),
+    isDarkMode: Boolean = false
 ) {
     val state by viewModel.state.collectAsState()
 
@@ -35,7 +36,7 @@ fun CurrencyConverter(
             Text(
                 text = "Amount",
                 style = MaterialTheme.typography.labelLarge.copy(
-                    color = Color(0xFF374151)
+                    color = if (isDarkMode) Color.White else Color(0xFF374151)
                 ),
                 modifier = Modifier.padding(bottom = 8.dp)
             )
@@ -46,7 +47,7 @@ fun CurrencyConverter(
                 placeholder = { 
                     Text(
                         "Enter amount",
-                        color = Color(0xFF9CA3AF)
+                        color = if (isDarkMode) Color.White.copy(alpha = 0.6f) else Color(0xFF9CA3AF)
                     ) 
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -55,9 +56,11 @@ fun CurrencyConverter(
                     .clip(RoundedCornerShape(12.dp)),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Color(0xFF8B5CF6),
-                    unfocusedBorderColor = Color(0xFFE5E7EB),
-                    focusedContainerColor = Color(0xFFF9FAFB),
-                    unfocusedContainerColor = Color(0xFFF9FAFB)
+                    unfocusedBorderColor = if (isDarkMode) Color(0xFF4B5563) else Color(0xFFE5E7EB),
+                    focusedContainerColor = if (isDarkMode) Color(0xFF1F2937) else Color(0xFFF9FAFB),
+                    unfocusedContainerColor = if (isDarkMode) Color(0xFF1F2937) else Color(0xFFF9FAFB),
+                    focusedTextColor = if (isDarkMode) Color.White else Color(0xFF374151),
+                    unfocusedTextColor = if (isDarkMode) Color.White else Color(0xFF374151)
                 ),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true
@@ -77,7 +80,7 @@ fun CurrencyConverter(
                 Text(
                     text = "From",
                     style = MaterialTheme.typography.labelLarge.copy(
-                        color = Color(0xFF374151)
+                        color = if (isDarkMode) Color.White else Color(0xFF374151)
                     ),
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
@@ -85,7 +88,8 @@ fun CurrencyConverter(
                 CurrencySelector(
                     selectedCurrency = state.fromCurrency,
                     onCurrencySelected = { viewModel.updateFromCurrency(it) },
-                    label = ""
+                    label = "",
+                    isDarkMode = isDarkMode
                 )
             }
 
@@ -117,7 +121,7 @@ fun CurrencyConverter(
                 Text(
                     text = "To",
                     style = MaterialTheme.typography.labelLarge.copy(
-                        color = Color(0xFF374151)
+                        color = if (isDarkMode) Color.White else Color(0xFF374151)
                     ),
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
@@ -125,7 +129,8 @@ fun CurrencyConverter(
                 CurrencySelector(
                     selectedCurrency = state.toCurrency,
                     onCurrencySelected = { viewModel.updateToCurrency(it) },
-                    label = ""
+                    label = "",
+                    isDarkMode = isDarkMode
                 )
             }
         }
@@ -140,8 +145,8 @@ fun CurrencyConverter(
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFF8B5CF6),
                 contentColor = Color.White,
-                disabledContainerColor = Color(0xFFE5E7EB),
-                disabledContentColor = Color(0xFF9CA3AF)
+                disabledContainerColor = if (isDarkMode) Color(0xFF374151) else Color(0xFFE5E7EB),
+                disabledContentColor = if (isDarkMode) Color(0xFF6B7280) else Color(0xFF9CA3AF)
             ),
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -173,7 +178,7 @@ fun CurrencyConverter(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFEDE9FE)
+                    containerColor = if (isDarkMode) Color(0xFF2D1B69) else Color(0xFFEDE9FE)
                 ),
                 shape = RoundedCornerShape(12.dp)
             ) {
@@ -184,14 +189,14 @@ fun CurrencyConverter(
                     Text(
                         text = "Converted Amount",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color(0xFF6B46C1)
+                            color = if (isDarkMode) Color.White.copy(alpha = 0.8f) else Color(0xFF6B46C1)
                         )
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "${state.result} ${state.toCurrency}",
                         style = MaterialTheme.typography.headlineMedium.copy(
-                            color = Color(0xFF4C1D95)
+                            color = if (isDarkMode) Color.White else Color(0xFF4C1D95)
                         )
                     )
                 }

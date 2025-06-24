@@ -1,7 +1,5 @@
 package com.harry.composables
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,21 +9,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.harry.model.ConversionRecord
-import com.harry.viewmodels.DashboardState
 import com.harry.viewmodels.DashboardViewModel
+import com.harry.viewmodels.DashboardState
 import kotlinx.coroutines.flow.collectLatest
-import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun Dashboard(
     modifier: Modifier = Modifier,
@@ -34,7 +28,6 @@ fun Dashboard(
     val state: DashboardState by viewModel.state.collectAsState()
     var conversionHistory: List<ConversionRecord> by remember { mutableStateOf(emptyList()) }
     var isDarkMode by remember { mutableStateOf(false) } // Local theme state
-    val coroutineScope = rememberCoroutineScope()
 
     // Collect conversion history updates
     LaunchedEffect(Unit) {
@@ -102,7 +95,11 @@ fun Dashboard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = if (isDarkMode) {
+                        Color(0xFF1A1B3A).copy(alpha = 0.8f)
+                    } else {
+                        Color.White.copy(alpha = 0.9f)
+                    }
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {
@@ -112,11 +109,11 @@ fun Dashboard(
                     Text(
                         text = "Convert Currency",
                         style = MaterialTheme.typography.headlineSmall.copy(
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = if (isDarkMode) Color.White else Color(0xFF374151)
                         )
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    CurrencyConverter(viewModel = viewModel)
+                    CurrencyConverter(viewModel = viewModel, isDarkMode = isDarkMode)
                 }
             }
             
@@ -127,12 +124,17 @@ fun Dashboard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = if (isDarkMode) {
+                        Color(0xFF1A1B3A).copy(alpha = 0.8f)
+                    } else {
+                        Color.White.copy(alpha = 0.9f)
+                    }
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {
                 ConversionHistory(
                     conversions = conversionHistory,
+                    isDarkMode = isDarkMode,
                     modifier = Modifier.padding(24.dp)
                 )
             }
@@ -142,7 +144,8 @@ fun Dashboard(
                 Spacer(modifier = Modifier.height(16.dp))
                 NetworkError(
                     message = error,
-                    onRetry = { viewModel.convertCurrency() }
+                    onRetry = { viewModel.convertCurrency() },
+                    isDarkMode = isDarkMode
                 )
             }
             
@@ -183,7 +186,11 @@ private fun QuickStatsCard(state: DashboardState, isDarkMode: Boolean) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+            containerColor = if (isDarkMode) {
+                Color(0xFF1A1B3A).copy(alpha = 0.6f)
+            } else {
+                Color.White.copy(alpha = 0.8f)
+            }
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -198,21 +205,21 @@ private fun QuickStatsCard(state: DashboardState, isDarkMode: Boolean) {
                 Text(
                     text = "Exchange Rate",
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                        color = if (isDarkMode) Color.White.copy(alpha = 0.8f) else Color(0xFF374151).copy(alpha = 0.8f)
                     )
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "${state.fromCurrency}/${state.toCurrency}",
                     style = MaterialTheme.typography.headlineSmall.copy(
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = if (isDarkMode) Color.White else Color(0xFF374151)
                     )
                 )
             }
             
             if (state.isLoading) {
                 CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if (isDarkMode) Color.White else Color(0xFF8B5CF6),
                     modifier = Modifier.size(24.dp),
                     strokeWidth = 2.dp
                 )
@@ -223,14 +230,14 @@ private fun QuickStatsCard(state: DashboardState, isDarkMode: Boolean) {
                     Text(
                         text = "Result",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                            color = if (isDarkMode) Color.White.copy(alpha = 0.8f) else Color(0xFF374151).copy(alpha = 0.8f)
                         )
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = state.result,
                         style = MaterialTheme.typography.headlineSmall.copy(
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = if (isDarkMode) Color.White else Color(0xFF374151)
                         )
                     )
                 }
@@ -239,7 +246,6 @@ private fun QuickStatsCard(state: DashboardState, isDarkMode: Boolean) {
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true)
 @Composable
 fun DashboardPreview() {
