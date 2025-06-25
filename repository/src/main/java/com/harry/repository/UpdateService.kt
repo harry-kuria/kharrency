@@ -158,13 +158,33 @@ class UpdateService @Inject constructor() {
     }
     
     private fun extractReleaseNotes(body: String): String {
-        // Extract clean release notes (remove technical details)
+        // Extract "What's New" section for display in update dialog
         val lines = body.split("\n")
-        val notesStart = lines.indexOfFirst { it.contains("### Features:") || it.contains("## ") }
-        val notesEnd = lines.indexOfFirst { it.contains("### Technical Details:") }
+        val whatsNewStart = lines.indexOfFirst { it.contains("### What's New:") }
         
-        return if (notesStart != -1 && notesEnd != -1) {
-            lines.subList(notesStart, notesEnd).joinToString("\n").trim()
+        if (whatsNewStart != -1) {
+            // Find the end of What's New section (next ### heading or end of content)
+            val whatsNewEnd = lines.drop(whatsNewStart + 1).indexOfFirst { 
+                it.startsWith("### ") || it.startsWith("## ")
+            }
+            
+            val endIndex = if (whatsNewEnd != -1) {
+                whatsNewStart + 1 + whatsNewEnd
+            } else {
+                lines.size
+            }
+            
+            return lines.subList(whatsNewStart + 1, endIndex)
+                .joinToString("\n")
+                .trim()
+        }
+        
+        // Fallback: extract features section or first part of body
+        val featuresStart = lines.indexOfFirst { it.contains("### Features:") }
+        val technicalDetailsStart = lines.indexOfFirst { it.contains("### Technical Details:") }
+        
+        return if (featuresStart != -1 && technicalDetailsStart != -1) {
+            lines.subList(featuresStart, technicalDetailsStart).joinToString("\n").trim()
         } else {
             body.split("### Technical Details:")[0].trim()
         }

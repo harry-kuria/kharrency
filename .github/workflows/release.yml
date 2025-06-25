@@ -11,8 +11,15 @@ on:
         description: 'Version code (integer)'
         required: true
         default: '1'
+      whats_new:
+        description: 'What'\''s New (shown in update dialog) - Use • for bullet points'
+        required: true
+        default: '• Bug fixes and performance improvements
+• Updated currency exchange rates
+• Enhanced user interface'
+        type: string
       release_notes:
-        description: 'Release notes'
+        description: 'Additional release notes (optional)'
         required: false
         default: 'New release of Kharrency - Currency Exchange App'
 
@@ -90,6 +97,10 @@ jobs:
           
           **Version Code:** ${{ github.event.inputs.version_code }}
           
+          ### What's New:
+          ${{ github.event.inputs.whats_new }}
+          
+          ### Additional Notes:
           ${{ github.event.inputs.release_notes }}
           
           ### Features:
