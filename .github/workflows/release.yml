@@ -12,7 +12,7 @@ on:
         required: true
         default: '1'
       whats_new:
-        description: 'What'\''s New (shown in update dialog) - Use • for bullet points'
+        description: "What's New (shown in update dialog) - Use • for bullet points"
         required: true
         default: |
           • Bug fixes and performance improvements
