@@ -42,13 +42,18 @@ class ApkDownloadService @Inject constructor(
     
     fun downloadApk(downloadUrl: String, fileName: String): Flow<DownloadProgress> = flow {
         try {
+            android.util.Log.d("ApkDownloadService", "Starting download: $downloadUrl")
+            
             val url = URL(downloadUrl)
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
             connection.connectTimeout = 30000
             connection.readTimeout = 30000
+            connection.setRequestProperty("User-Agent", "Kharrency-UpdateClient/1.0")
             
             val responseCode = connection.responseCode
+            android.util.Log.d("ApkDownloadService", "Download response code: $responseCode")
+            
             if (responseCode != HttpURLConnection.HTTP_OK) {
                 emit(DownloadProgress(0, 0, 0, false, "Download failed: HTTP $responseCode"))
                 return@flow
@@ -60,15 +65,29 @@ class ApkDownloadService @Inject constructor(
             // Create updates directory in app's private storage
             val updatesDir = File(context.filesDir, "updates")
             if (!updatesDir.exists()) {
-                updatesDir.mkdirs()
+                if (!updatesDir.mkdirs()) {
+                    emit(DownloadProgress(0, 0, 0, false, "Failed to create updates directory"))
+                    return@flow
+                }
             }
             
             val apkFile = File(updatesDir, fileName)
+            
+            // Remove existing file if it exists
+            if (apkFile.exists()) {
+                if (!apkFile.delete()) {
+                    android.util.Log.w("ApkDownloadService", "Could not delete existing APK file")
+                }
+            }
+            
             val outputStream = FileOutputStream(apkFile)
             
-            val buffer = ByteArray(8192)
+            val buffer = ByteArray(16384) // 16KB buffer for better performance
             var bytesDownloaded = 0L
             var bytesRead: Int
+            var lastProgressTime = System.currentTimeMillis()
+            
+            android.util.Log.d("ApkDownloadService", "Starting download to: ${apkFile.absolutePath}, size: $totalBytes bytes")
             
             while (inputStream.read(buffer).also { bytesRead = it } != -1) {
                 outputStream.write(buffer, 0, bytesRead)
@@ -80,35 +99,61 @@ class ApkDownloadService @Inject constructor(
                     0
                 }
                 
-                emit(DownloadProgress(bytesDownloaded, totalBytes, percentage, false))
+                // Emit progress updates every 500ms to avoid overwhelming the UI
+                val currentTime = System.currentTimeMillis()
+                if (currentTime - lastProgressTime > 500 || bytesRead == -1) {
+                    emit(DownloadProgress(bytesDownloaded, totalBytes, percentage, false))
+                    lastProgressTime = currentTime
+                }
             }
             
+            outputStream.flush()
             outputStream.close()
             inputStream.close()
             connection.disconnect()
             
+            // Verify download completed successfully
+            if (apkFile.length() != totalBytes && totalBytes > 0) {
+                android.util.Log.e("ApkDownloadService", "Download size mismatch: ${apkFile.length()} vs $totalBytes")
+                apkFile.delete()
+                emit(DownloadProgress(0, 0, 0, false, "Download incomplete: file size mismatch"))
+                return@flow
+            }
+            
+            android.util.Log.d("ApkDownloadService", "Download completed successfully: ${apkFile.length()} bytes")
+            
+            // Final integrity check
+            if (!apkFile.exists() || apkFile.length() == 0L) {
+                emit(DownloadProgress(0, 0, 0, false, "Downloaded file is invalid"))
+                return@flow
+            }
+            
             // Download complete
             emit(DownloadProgress(bytesDownloaded, totalBytes, 100, true))
             
+        } catch (e: java.io.IOException) {
+            android.util.Log.e("ApkDownloadService", "Network error during download", e)
+            emit(DownloadProgress(0, 0, 0, false, "Network error: ${e.message}"))
         } catch (e: Exception) {
+            android.util.Log.e("ApkDownloadService", "Download error", e)
             emit(DownloadProgress(0, 0, 0, false, "Download error: ${e.message}"))
         }
     }.flowOn(Dispatchers.IO)
     
     suspend fun installApk(fileName: String): Boolean {
-        return withContext(Dispatchers.Main) {
+        return withContext(Dispatchers.IO) {
             try {
                 val updatesDir = File(context.filesDir, "updates")
                 val apkFile = File(updatesDir, fileName)
                 
                 if (!apkFile.exists()) {
+                    android.util.Log.e("ApkDownloadService", "APK file not found: ${apkFile.absolutePath}")
                     return@withContext false
                 }
                 
-                // Check for potential package conflicts
-                if (hasPackageConflict(apkFile)) {
-                    // Show user-friendly conflict resolution options
-                    showConflictResolutionDialog()
+                // Verify APK integrity
+                if (!verifyApkIntegrity(apkFile)) {
+                    android.util.Log.e("ApkDownloadService", "APK integrity check failed")
                     return@withContext false
                 }
                 
@@ -116,39 +161,137 @@ class ApkDownloadService @Inject constructor(
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     val packageManager = context.packageManager
                     if (!packageManager.canRequestPackageInstalls()) {
-                        // Request permission to install unknown apps
-                        val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
-                        intent.data = Uri.parse("package:${context.packageName}")
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        context.startActivity(intent)
+                        android.util.Log.w("ApkDownloadService", "No permission to install unknown apps")
+                        withContext(Dispatchers.Main) {
+                            requestInstallPermission()
+                        }
                         return@withContext false
                     }
                 }
                 
-                // Create URI for the APK file using FileProvider
-                val apkUri = FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.fileprovider",
-                    apkFile
-                )
-                
-                // Create install intent
-                val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(apkUri, "application/vnd.android.package-archive")
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+                // Use proper installation method based on Android version
+                withContext(Dispatchers.Main) {
+                    installApkWithIntent(apkFile)
                 }
                 
-                // For debug builds, add additional flags to help with installation
-                if (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {
-                    installIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-                }
-                
-                context.startActivity(installIntent)
                 return@withContext true
                 
             } catch (e: Exception) {
+                android.util.Log.e("ApkDownloadService", "Installation failed", e)
                 return@withContext false
             }
+        }
+    }
+    
+    private fun verifyApkIntegrity(apkFile: File): Boolean {
+        return try {
+            val packageManager = context.packageManager
+            val packageInfo = packageManager.getPackageArchiveInfo(
+                apkFile.absolutePath, 
+                android.content.pm.PackageManager.GET_META_DATA
+            )
+            
+            // Basic checks
+            if (packageInfo == null) {
+                android.util.Log.e("ApkDownloadService", "Invalid APK: Cannot parse package info")
+                return false
+            }
+            
+            if (packageInfo.packageName != context.packageName) {
+                android.util.Log.e("ApkDownloadService", "Package name mismatch: ${packageInfo.packageName} vs ${context.packageName}")
+                return false
+            }
+            
+            // Check file size (should be reasonable for an app update)
+            val fileSize = apkFile.length()
+            if (fileSize < 1024 * 1024 || fileSize > 500 * 1024 * 1024) { // 1MB to 500MB
+                android.util.Log.e("ApkDownloadService", "Suspicious file size: $fileSize bytes")
+                return false
+            }
+            
+            android.util.Log.d("ApkDownloadService", "APK integrity verified: ${packageInfo.packageName} v${packageInfo.versionName}")
+            true
+        } catch (e: Exception) {
+            android.util.Log.e("ApkDownloadService", "APK integrity check failed", e)
+            false
+        }
+    }
+    
+    private fun requestInstallPermission() {
+        try {
+            val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                data = Uri.parse("package:${context.packageName}")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            android.util.Log.e("ApkDownloadService", "Failed to request install permission", e)
+        }
+    }
+    
+    private fun installApkWithIntent(apkFile: File) {
+        try {
+            // Create URI for the APK file using FileProvider
+            val apkUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                apkFile
+            )
+            
+            // Create install intent with proper flags
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or 
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                
+                // Add additional flags for better compatibility
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+                }
+            }
+            
+            // Verify intent can be handled
+            val packageManager = context.packageManager
+            val resolveInfo = packageManager.resolveActivity(installIntent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+            
+            if (resolveInfo != null) {
+                android.util.Log.d("ApkDownloadService", "Starting APK installation")
+                context.startActivity(installIntent)
+            } else {
+                android.util.Log.e("ApkDownloadService", "No app can handle APK installation intent")
+                // Fallback: try with package installer
+                installWithPackageInstaller(apkUri)
+            }
+            
+        } catch (e: Exception) {
+            android.util.Log.e("ApkDownloadService", "Failed to install APK with intent", e)
+        }
+    }
+    
+    private fun installWithPackageInstaller(apkUri: Uri) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                val intent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+                    data = apkUri
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or 
+                           Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
+                    putExtra(Intent.EXTRA_RETURN_RESULT, true)
+                    putExtra(Intent.EXTRA_INSTALLER_PACKAGE_NAME, context.packageName)
+                }
+                context.startActivity(intent)
+                android.util.Log.d("ApkDownloadService", "Started installation with package installer")
+            } else {
+                // Fallback for older Android versions
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(apkUri, "application/vnd.android.package-archive")
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(intent)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ApkDownloadService", "Package installer fallback failed", e)
         }
     }
     
