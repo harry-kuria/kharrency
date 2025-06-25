@@ -53,9 +53,17 @@ jobs:
         
     - name: Generate keystore
       run: |
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/keystore.jks
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/keystore.jks
+        ls -la app/keystore.jks
+        file app/keystore.jks
       env:
         KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        
+    - name: Verify keystore
+      run: |
+        keytool -list -keystore app/keystore.jks -storepass ${{ secrets.SIGNING_STORE_PASSWORD }} -v
+      env:
+        SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
         
     - name: Build Release APK
       run: ./gradlew assembleRelease
