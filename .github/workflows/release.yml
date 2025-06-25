@@ -1,0 +1,140 @@
+name: Build and Release APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Version name (e.g., 1.0.0)'
+        required: true
+        default: '1.0.0'
+      version_code:
+        description: 'Version code (integer)'
+        required: true
+        default: '1'
+      release_notes:
+        description: 'Release notes'
+        required: false
+        default: 'New release of Kharrency - Currency Exchange App'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      
+    - name: Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+          
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+      
+    - name: Update version in build.gradle.kts
+      run: |
+        sed -i "s/versionCode = [0-9]*/versionCode = ${{ github.event.inputs.version_code }}/" app/build.gradle.kts
+        sed -i "s/versionName = \"[^\"]*\"/versionName = \"${{ github.event.inputs.version_name }}\"/" app/build.gradle.kts
+        
+    - name: Generate keystore
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/keystore.jks
+      env:
+        KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        
+    - name: Build Release APK
+      run: ./gradlew assembleRelease
+      env:
+        SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+        SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+        
+    - name: Sign APK
+      uses: r0adkll/sign-android-release@v1
+      id: sign_app
+      with:
+        releaseDirectory: app/build/outputs/apk/release
+        signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
+        alias: ${{ secrets.SIGNING_KEY_ALIAS }}
+        keyStorePassword: ${{ secrets.SIGNING_STORE_PASSWORD }}
+        keyPassword: ${{ secrets.SIGNING_KEY_PASSWORD }}
+      env:
+        BUILD_TOOLS_VERSION: "34.0.0"
+        
+    - name: Rename APK
+      run: |
+        mv app/build/outputs/apk/release/app-release-unsigned-signed.apk app/build/outputs/apk/release/Kharrency-v${{ github.event.inputs.version_name }}.apk
+        
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ github.event.inputs.version_name }}
+        release_name: Kharrency v${{ github.event.inputs.version_name }}
+        body: |
+          ## Kharrency v${{ github.event.inputs.version_name }}
+          
+          ${{ github.event.inputs.release_notes }}
+          
+          ### Features:
+          - 🌍 Real-time currency exchange rates
+          - 💱 Convert between USD, EUR, and JPY
+          - 📊 Conversion history (last 5 conversions)
+          - 🌙 Light/Dark mode support
+          - 📱 Modern Material Design 3 UI
+          - 🎨 Beautiful purple theme with Bebas Neue font
+          - 💾 Persistent conversion history
+          - 🔄 Offline caching with automatic refresh
+          - ⚡ Built with Jetpack Compose and MVVM architecture
+          
+          ### Installation:
+          1. Download the APK file below
+          2. Enable "Install from unknown sources" in your Android settings
+          3. Install the APK file
+          4. Enjoy currency conversion!
+          
+          ### Technical Details:
+          - Minimum Android version: 8.0 (API level 26)
+          - Target Android version: 14 (API level 35)
+          - Architecture: MVVM with Hilt dependency injection
+          - Database: Room for local caching
+          - API: Free ExchangeRate-API.com
+          
+          ---
+          
+          **Download the APK below and start converting currencies! 📱💰**
+        draft: false
+        prerelease: false
+        
+    - name: Upload APK to Release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: app/build/outputs/apk/release/Kharrency-v${{ github.event.inputs.version_name }}.apk
+        asset_name: Kharrency-v${{ github.event.inputs.version_name }}.apk
+        asset_content_type: application/vnd.android.package-archive
+        
+    - name: Output Release URL
+      run: |
+        echo "🎉 Release created successfully!"
+        echo "📱 APK Download URL: ${{ steps.create_release.outputs.html_url }}"
+        echo "🏷️ Tag: v${{ github.event.inputs.version_name }}" 
