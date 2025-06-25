@@ -204,6 +204,13 @@ private fun HeaderSection(modifier: Modifier, isDarkMode: Boolean) {
                 color = textColor.copy(alpha = 0.7f)
             )
         )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "v1.0.0",
+            style = MaterialTheme.typography.bodySmall.copy(
+                color = textColor.copy(alpha = 0.6f)
+            )
+        )
     }
 }
 
