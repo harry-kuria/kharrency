@@ -179,53 +179,53 @@ fun UpdateDialog(
                         }
                     )
                 } else {
-                    // Action Buttons
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = if (updateInfo.isForceUpdate) {
-                            Arrangement.Center
-                        } else {
-                            Arrangement.spacedBy(12.dp)
-                        }
-                    ) {
-                        if (!updateInfo.isForceUpdate) {
-                            OutlinedButton(
-                                onClick = onDismiss,
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = if (isDarkMode) Color.White else Color(0xFF374151)
-                                ),
-                                border = BorderStroke(
-                                    1.dp, 
-                                    if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color(0xFFE5E7EB)
-                                )
-                            ) {
-                                Text("Later")
-                            }
-                        }
-                        
-                        Button(
-                            onClick = {
-                                startDownload()
-                            },
-                            enabled = !isDownloading,
-                            modifier = if (updateInfo.isForceUpdate) {
-                                Modifier.fillMaxWidth()
-                            } else {
-                                Modifier.weight(1f)
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (updateInfo.isForceUpdate) Color(0xFFEF4444) else Color(0xFF8B5CF6),
-                                contentColor = Color.White
+                // Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = if (updateInfo.isForceUpdate) {
+                        Arrangement.Center
+                    } else {
+                        Arrangement.spacedBy(12.dp)
+                    }
+                ) {
+                    if (!updateInfo.isForceUpdate) {
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = if (isDarkMode) Color.White else Color(0xFF374151)
                             ),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text(
-                                text = if (updateInfo.isForceUpdate) "📥 Update Now" else "📥 Download",
-                                style = MaterialTheme.typography.labelLarge.copy(
-                                    fontWeight = FontWeight.SemiBold
-                                )
+                            border = BorderStroke(
+                                1.dp, 
+                                if (isDarkMode) Color.White.copy(alpha = 0.3f) else Color(0xFFE5E7EB)
                             )
+                        ) {
+                            Text("Later")
+                        }
+                    }
+                    
+                    Button(
+                        onClick = {
+                                startDownload()
+                        },
+                            enabled = !isDownloading,
+                        modifier = if (updateInfo.isForceUpdate) {
+                            Modifier.fillMaxWidth()
+                        } else {
+                            Modifier.weight(1f)
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (updateInfo.isForceUpdate) Color(0xFFEF4444) else Color(0xFF8B5CF6),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                                text = if (updateInfo.isForceUpdate) "📥 Update Now" else "📥 Download",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
                         }
                     }
                 }
