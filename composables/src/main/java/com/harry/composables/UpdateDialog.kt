@@ -45,6 +45,7 @@ fun UpdateDialog(
     isDarkMode: Boolean,
     downloadService: ApkDownloadService
 ) {
+    val coroutineScope = rememberCoroutineScope()
     var downloadProgress by remember { mutableStateOf<DownloadProgress?>(null) }
     var isDownloading by remember { mutableStateOf(false) }
     var downloadComplete by remember { mutableStateOf(false) }
@@ -362,8 +363,8 @@ private fun DownloadProgressSection(
                         Button(
                             onClick = { 
                                 val fileName = "Kharrency-v${updateInfo.latestVersion}.apk"
-                                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                                    downloadService.installWithConflictResolution(fileName).collectLatest { result ->
+                                coroutineScope.launch {
+                                    downloadService.installWithConflictResolution(fileName).collect { result ->
                                         installationState = when (result) {
                                             is InstallationResult.Installing -> InstallationState.Installing
                                             is InstallationResult.Success -> InstallationState.Success
