@@ -28,6 +28,13 @@ data class DownloadProgress(
     val error: String? = null
 )
 
+sealed class InstallationResult {
+    object Installing : InstallationResult()
+    object Success : InstallationResult()
+    data class Error(val message: String) : InstallationResult()
+    data class ConflictDetected(val message: String) : InstallationResult()
+}
+
 @Singleton
 class ApkDownloadService @Inject constructor(
     @ApplicationContext private val context: Context
@@ -98,6 +105,13 @@ class ApkDownloadService @Inject constructor(
                     return@withContext false
                 }
                 
+                // Check for potential package conflicts
+                if (hasPackageConflict(apkFile)) {
+                    // Show user-friendly conflict resolution options
+                    showConflictResolutionDialog()
+                    return@withContext false
+                }
+                
                 // Check if we can install unknown apps (Android 8.0+)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     val packageManager = context.packageManager
@@ -137,6 +151,89 @@ class ApkDownloadService @Inject constructor(
             }
         }
     }
+    
+    private fun hasPackageConflict(apkFile: File): Boolean {
+        try {
+            val packageManager = context.packageManager
+            val packageInfo = packageManager.getPackageArchiveInfo(apkFile.absolutePath, 0)
+            val newPackageName = packageInfo?.packageName ?: return false
+            
+            // Check if app with same package name but different signature exists
+            try {
+                val existingInfo = packageManager.getPackageInfo(newPackageName, 0)
+                val existingSignature = getPackageSignature(existingInfo)
+                val newSignature = getApkSignature(apkFile)
+                
+                return existingSignature != null && newSignature != null && existingSignature != newSignature
+            } catch (e: Exception) {
+                // Package not installed, no conflict
+                return false
+            }
+        } catch (e: Exception) {
+            return false
+        }
+    }
+    
+    private fun getPackageSignature(packageInfo: android.content.pm.PackageInfo): String? {
+        return try {
+            val packageManager = context.packageManager
+            val signatures = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                packageManager.getPackageInfo(packageInfo.packageName, android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES).signingInfo?.apkContentsSigners
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageInfo(packageInfo.packageName, android.content.pm.PackageManager.GET_SIGNATURES).signatures
+            }
+            signatures?.firstOrNull()?.toCharsString()
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    private fun getApkSignature(apkFile: File): String? {
+        return try {
+            val packageManager = context.packageManager
+            val packageInfo = packageManager.getPackageArchiveInfo(apkFile.absolutePath, android.content.pm.PackageManager.GET_SIGNATURES)
+            @Suppress("DEPRECATION")
+            packageInfo?.signatures?.firstOrNull()?.toCharsString()
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    private fun showConflictResolutionDialog() {
+        // This will be handled by the UI layer - we'll emit a conflict event
+        // The UpdateDialog can then show appropriate options
+    }
+    
+    fun installWithConflictResolution(fileName: String): Flow<InstallationResult> = flow {
+        try {
+            val updatesDir = File(context.filesDir, "updates")
+            val apkFile = File(updatesDir, fileName)
+            
+            if (!apkFile.exists()) {
+                emit(InstallationResult.Error("APK file not found"))
+                return@flow
+            }
+            
+            // Check for conflicts
+            if (hasPackageConflict(apkFile)) {
+                emit(InstallationResult.ConflictDetected("Package signing conflict detected. Please uninstall the current version first."))
+                return@flow
+            }
+            
+            // Proceed with installation
+            emit(InstallationResult.Installing)
+            val success = installApk(fileName)
+            
+            if (success) {
+                emit(InstallationResult.Success)
+            } else {
+                emit(InstallationResult.Error("Installation failed"))
+            }
+        } catch (e: Exception) {
+            emit(InstallationResult.Error("Installation error: ${e.message}"))
+        }
+    }.flowOn(Dispatchers.IO)
     
     fun uninstallCurrentApp() {
         try {

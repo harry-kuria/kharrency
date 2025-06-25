@@ -27,26 +27,34 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.harry.model.UpdateInfo
 import com.harry.repository.ApkDownloadService
 import com.harry.repository.DownloadProgress
+import com.harry.repository.InstallationResult
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+
+sealed class InstallationState {
+    object Installing : InstallationState()
+    object Success : InstallationState()
+    data class Error(val message: String) : InstallationState()
+    data class ConflictDetected(val message: String) : InstallationState()
+}
 
 @Composable
 fun UpdateDialog(
     updateInfo: UpdateInfo,
     onDismiss: () -> Unit,
-    onDownload: () -> Unit,
-    isDarkMode: Boolean = false
+    isDarkMode: Boolean,
+    downloadService: ApkDownloadService
 ) {
-    val context = LocalContext.current
-    val downloadService = hiltViewModel<UpdateDialogViewModel>().downloadService
     var downloadProgress by remember { mutableStateOf<DownloadProgress?>(null) }
     var isDownloading by remember { mutableStateOf(false) }
     var downloadComplete by remember { mutableStateOf(false) }
+    var installationState by remember { mutableStateOf<InstallationState?>(null) }
     
-    // Download function
     val startDownload = {
         isDownloading = true
         downloadComplete = false
+        downloadProgress = null
+        installationState = null
     }
     
     // Collect download progress
@@ -171,12 +179,7 @@ fun UpdateDialog(
                         isDarkMode = isDarkMode,
                         downloadService = downloadService,
                         updateInfo = updateInfo,
-                        onInstall = { 
-                            val fileName = "Kharrency-v${updateInfo.latestVersion}.apk"
-                            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                                downloadService.installApk(fileName)
-                            }
-                        }
+                        installationState = installationState
                     )
                 } else {
                 // Action Buttons
@@ -309,7 +312,7 @@ private fun DownloadProgressSection(
     isDarkMode: Boolean,
     downloadService: ApkDownloadService,
     updateInfo: UpdateInfo,
-    onInstall: () -> Unit
+    installationState: InstallationState?
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -357,12 +360,25 @@ private fun DownloadProgressSection(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
-                            onClick = onInstall,
+                            onClick = { 
+                                val fileName = "Kharrency-v${updateInfo.latestVersion}.apk"
+                                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                                    downloadService.installWithConflictResolution(fileName).collectLatest { result ->
+                                        installationState = when (result) {
+                                            is InstallationResult.Installing -> InstallationState.Installing
+                                            is InstallationResult.Success -> InstallationState.Success
+                                            is InstallationResult.Error -> InstallationState.Error(result.message)
+                                            is InstallationResult.ConflictDetected -> InstallationState.ConflictDetected(result.message)
+                                        }
+                                    }
+                                }
+                            },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF10B981)
                             ),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = installationState !is InstallationState.Installing
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -374,7 +390,10 @@ private fun DownloadProgressSection(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Text(
-                                    text = "Install Update",
+                                    text = when (installationState) {
+                                        is InstallationState.Installing -> "Installing..."
+                                        else -> "Install Update"
+                                    },
                                     style = MaterialTheme.typography.labelLarge.copy(
                                         fontWeight = FontWeight.SemiBold
                                     )
@@ -382,24 +401,157 @@ private fun DownloadProgressSection(
                             }
                         }
                         
-                        // Debug option: Uninstall first (for testing only)
-                        OutlinedButton(
-                            onClick = { 
-                                downloadService.uninstallCurrentApp()
-                            },
+                        // Helpful info card
+                        Card(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = Color(0xFFEF4444)
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFF3B82F6).copy(alpha = 0.1f)
                             ),
-                            border = BorderStroke(1.dp, Color(0xFFEF4444)),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
-                                text = "🗑️ Uninstall & Reinstall (Debug)",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = FontWeight.Medium
-                                )
+                                text = "💡 If installation fails with 'package conflicts', uninstall the current app first from Settings → Apps → Kharrency → Uninstall",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = if (isDarkMode) Color.White.copy(alpha = 0.8f) else Color(0xFF1E40AF)
+                                ),
+                                modifier = Modifier.padding(12.dp)
                             )
+                        }
+                        
+                        // Installation status and conflict resolution
+                        installationState?.let { state ->
+                            when (state) {
+                                is InstallationState.ConflictDetected -> {
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color(0xFFEF4444).copy(alpha = 0.1f)
+                                        ),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Text(
+                                                text = "⚠️ Package Conflict Detected",
+                                                style = MaterialTheme.typography.titleSmall.copy(
+                                                    color = Color(0xFFEF4444),
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            )
+                                            Text(
+                                                text = state.message,
+                                                style = MaterialTheme.typography.bodySmall.copy(
+                                                    color = Color(0xFFEF4444)
+                                                )
+                                            )
+                                        }
+                                    }
+                                    
+                                    OutlinedButton(
+                                        onClick = { 
+                                            downloadService.uninstallCurrentApp()
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            contentColor = Color(0xFFEF4444)
+                                        ),
+                                        border = BorderStroke(1.dp, Color(0xFFEF4444)),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Text(
+                                            text = "🗑️ Uninstall Current App",
+                                            style = MaterialTheme.typography.labelMedium.copy(
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        )
+                                    }
+                                }
+                                is InstallationState.Error -> {
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color(0xFFEF4444).copy(alpha = 0.1f)
+                                        ),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Text(
+                                            text = "❌ Installation failed: ${state.message}",
+                                            style = MaterialTheme.typography.bodySmall.copy(
+                                                color = Color(0xFFEF4444)
+                                            ),
+                                            modifier = Modifier.padding(12.dp)
+                                        )
+                                    }
+                                }
+                                is InstallationState.Success -> {
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color(0xFF10B981).copy(alpha = 0.1f)
+                                        ),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Text(
+                                            text = "🎉 Installation successful! The app will restart with the new version.",
+                                            style = MaterialTheme.typography.bodySmall.copy(
+                                                color = Color(0xFF10B981)
+                                            ),
+                                            modifier = Modifier.padding(12.dp)
+                                        )
+                                    }
+                                }
+                                is InstallationState.Installing -> {
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color(0xFF3B82F6).copy(alpha = 0.1f)
+                                        ),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            androidx.compose.material3.CircularProgressIndicator(
+                                                modifier = Modifier.size(16.dp),
+                                                strokeWidth = 2.dp,
+                                                color = Color(0xFF3B82F6)
+                                            )
+                                            Text(
+                                                text = "Installing update...",
+                                                style = MaterialTheme.typography.bodySmall.copy(
+                                                    color = Color(0xFF3B82F6)
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Quick uninstall option (only show if no specific conflict detected)
+                        if (installationState !is InstallationState.ConflictDetected) {
+                            OutlinedButton(
+                                onClick = { 
+                                    downloadService.uninstallCurrentApp()
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color(0xFFEF4444)
+                                ),
+                                border = BorderStroke(1.dp, Color(0xFFEF4444)),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(
+                                    text = "🗑️ Quick Uninstall (if conflicts occur)",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                )
+                            }
                         }
                     }
                 }
