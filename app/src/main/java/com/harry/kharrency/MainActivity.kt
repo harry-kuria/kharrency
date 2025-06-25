@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Dashboard()
+                    Dashboard(appVersion = "v${BuildConfig.VERSION_NAME}")
                 }
             }
         }

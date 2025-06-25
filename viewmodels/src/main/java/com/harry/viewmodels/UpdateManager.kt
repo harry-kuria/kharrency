@@ -28,11 +28,20 @@ class UpdateManager @Inject constructor(
     companion object {
         private val LAST_UPDATE_CHECK = longPreferencesKey("last_update_check")
         private val UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000L // 24 hours in milliseconds
+        private val RATE_LIMIT_INTERVAL = 60 * 60 * 1000L // 1 hour in milliseconds for rate limit safety
     }
     
     suspend fun checkForUpdates(forceCheck: Boolean = false): UpdateCheckResponse {
         val currentTime = System.currentTimeMillis()
         val lastCheckTime = getLastUpdateCheckTime()
+        
+        // For rate limit safety, don't check more than once per hour unless forced
+        if (!forceCheck && (currentTime - lastCheckTime) < RATE_LIMIT_INTERVAL) {
+            return UpdateCheckResponse(
+                hasUpdate = false,
+                error = "Rate limit protection: Please wait before checking again"
+            )
+        }
         
         // Check if we should skip the update check (unless forced)
         if (!forceCheck && (currentTime - lastCheckTime) < UPDATE_CHECK_INTERVAL) {
@@ -42,8 +51,10 @@ class UpdateManager @Inject constructor(
         val currentVersionCode = getCurrentVersionCode()
         val result = updateService.checkForUpdates(currentVersionCode)
         
-        // Save the last check time
-        saveLastUpdateCheckTime(currentTime)
+        // Only save the last check time if the request was successful (not rate limited)
+        if (result.error?.contains("Rate limit") != true) {
+            saveLastUpdateCheckTime(currentTime)
+        }
         
         return result
     }

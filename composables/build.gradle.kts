@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.hilt.android)
+    implementation(libs.androidx.media3.exoplayer)
     kapt(libs.hilt.compiler)
     implementation(project(":viewmodels"))
     implementation(project(":repository"))

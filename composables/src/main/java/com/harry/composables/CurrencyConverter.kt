@@ -68,12 +68,12 @@ fun CurrencyConverter(
         }
 
         // Currency Selection Section
-        Row(
-            modifier = Modifier.fillMaxWidth(),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // From Currency
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // From Currency
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -112,9 +112,9 @@ fun CurrencyConverter(
                         modifier = Modifier.size(20.dp)
                     )
                 }
-            }
+                }
 
-            // To Currency
+                // To Currency
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -133,11 +133,11 @@ fun CurrencyConverter(
                     isDarkMode = isDarkMode
                 )
             }
-        }
+            }
 
-        // Convert Button
-        Button(
-            onClick = { viewModel.convertCurrency() },
+            // Convert Button
+            Button(
+                onClick = { viewModel.convertCurrency() },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
@@ -149,8 +149,8 @@ fun CurrencyConverter(
                 disabledContentColor = if (isDarkMode) Color(0xFF6B7280) else Color(0xFF9CA3AF)
             ),
             shape = RoundedCornerShape(12.dp)
-        ) {
-            if (state.isLoading) {
+            ) {
+                if (state.isLoading) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)

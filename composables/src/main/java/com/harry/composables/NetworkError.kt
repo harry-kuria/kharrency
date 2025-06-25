@@ -44,19 +44,19 @@ fun NetworkError(
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = "Network Error",
+        ) {
+            Text(
+                text = "Network Error",
                     style = MaterialTheme.typography.titleSmall.copy(
                         color = if (isDarkMode) Color(0xFFFCA5A5) else Color(0xFFDC2626)
-                    )
+            )
                 )
-                Text(
-                    text = message,
+            Text(
+                text = message,
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = if (isDarkMode) Color.White.copy(alpha = 0.9f) else Color(0xFF7F1D1D)
                     )
-                )
+            )
             }
             
             FilledTonalButton(
