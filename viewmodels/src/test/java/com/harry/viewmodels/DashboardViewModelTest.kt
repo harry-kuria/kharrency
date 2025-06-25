@@ -1,8 +1,11 @@
 package com.harry.viewmodels
 
+import com.harry.model.ConversionHistory
 import com.harry.repository.CurrencyRepository
+import com.harry.repository.ExchangeRateResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Before
@@ -16,12 +19,17 @@ import kotlin.test.assertNull
 class DashboardViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private val repository: CurrencyRepository = mock()
+    private val updateManager: UpdateManager = mock()
     private lateinit var viewModel: DashboardViewModel
 
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        viewModel = DashboardViewModel(repository)
+        
+        // Mock the repository methods called during initialization
+        whenever(repository.getConversionHistory()).thenReturn(flowOf(emptyList<ConversionHistory>()))
+        
+        viewModel = DashboardViewModel(repository, updateManager)
     }
 
     @After
@@ -56,7 +64,8 @@ class DashboardViewModelTest {
         viewModel.updateAmount("100")
         viewModel.updateFromCurrency("USD")
         viewModel.updateToCurrency("EUR")
-        whenever(repository.convertCurrency(100.0, "USD", "EUR")).thenReturn(85.0)
+        whenever(repository.convertCurrency(100.0, "USD", "EUR"))
+            .thenReturn(ExchangeRateResult.Success(mapOf("EUR" to 85.0)))
         
         viewModel.convertCurrency()
         testDispatcher.scheduler.advanceUntilIdle()
