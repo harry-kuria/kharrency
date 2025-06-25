@@ -45,17 +45,33 @@ fun UpdateDialog(
     isDarkMode: Boolean,
     downloadService: ApkDownloadService
 ) {
-    val coroutineScope = rememberCoroutineScope()
     var downloadProgress by remember { mutableStateOf<DownloadProgress?>(null) }
     var isDownloading by remember { mutableStateOf(false) }
     var downloadComplete by remember { mutableStateOf(false) }
     var installationState by remember { mutableStateOf<InstallationState?>(null) }
+    var shouldStartInstallation by remember { mutableStateOf(false) }
     
     val startDownload = {
         isDownloading = true
         downloadComplete = false
         downloadProgress = null
         installationState = null
+    }
+    
+    // Handle installation when triggered
+    if (shouldStartInstallation) {
+        LaunchedEffect(shouldStartInstallation) {
+            val fileName = "Kharrency-v${updateInfo.latestVersion}.apk"
+            downloadService.installWithConflictResolution(fileName).collect { result ->
+                installationState = when (result) {
+                    is InstallationResult.Installing -> InstallationState.Installing
+                    is InstallationResult.Success -> InstallationState.Success
+                    is InstallationResult.Error -> InstallationState.Error(result.message)
+                    is InstallationResult.ConflictDetected -> InstallationState.ConflictDetected(result.message)
+                }
+            }
+            shouldStartInstallation = false
+        }
     }
     
     // Collect download progress
@@ -180,7 +196,8 @@ fun UpdateDialog(
                         isDarkMode = isDarkMode,
                         downloadService = downloadService,
                         updateInfo = updateInfo,
-                        installationState = installationState
+                        installationState = installationState,
+                        onStartInstallation = { shouldStartInstallation = true }
                     )
                 } else {
                 // Action Buttons
@@ -313,7 +330,8 @@ private fun DownloadProgressSection(
     isDarkMode: Boolean,
     downloadService: ApkDownloadService,
     updateInfo: UpdateInfo,
-    installationState: InstallationState?
+    installationState: InstallationState?,
+    onStartInstallation: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -361,19 +379,7 @@ private fun DownloadProgressSection(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
-                            onClick = { 
-                                val fileName = "Kharrency-v${updateInfo.latestVersion}.apk"
-                                coroutineScope.launch {
-                                    downloadService.installWithConflictResolution(fileName).collect { result ->
-                                        installationState = when (result) {
-                                            is InstallationResult.Installing -> InstallationState.Installing
-                                            is InstallationResult.Success -> InstallationState.Success
-                                            is InstallationResult.Error -> InstallationState.Error(result.message)
-                                            is InstallationResult.ConflictDetected -> InstallationState.ConflictDetected(result.message)
-                                        }
-                                    }
-                                }
-                            },
+                            onClick = onStartInstallation,
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF10B981)

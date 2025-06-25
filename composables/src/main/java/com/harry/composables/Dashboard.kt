@@ -411,8 +411,8 @@ fun Dashboard(
         UpdateDialog(
             updateInfo = updateInfo!!,
             onDismiss = { showUpdateDialog = false },
-            onDownload = { /* Keep dialog open during download */ },
-            isDarkMode = isDarkMode
+            isDarkMode = isDarkMode,
+            downloadService = viewModel.downloadService
         )
     }
 }

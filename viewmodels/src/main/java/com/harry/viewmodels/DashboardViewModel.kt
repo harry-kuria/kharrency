@@ -34,7 +34,8 @@ data class DashboardState(
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val repository: CurrencyRepository,
-    private val updateManager: UpdateManager
+    private val updateManager: UpdateManager,
+    val downloadService: com.harry.repository.ApkDownloadService
 ) : ViewModel() {
     private val _state = MutableStateFlow(DashboardState())
     val state: StateFlow<DashboardState> = _state.asStateFlow()
