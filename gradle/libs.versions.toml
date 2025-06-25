@@ -45,6 +45,7 @@ androidx-appcompat = "1.6.1"
 material = "1.11.0"
 junit = "4.13.2"
 hilt-compiler = "2.50"
+datastore-core-android = "1.1.7"
 
 [libraries]
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
@@ -98,6 +99,7 @@ material = { module = "com.google.android.material:material", version.ref = "mat
 junit = { module = "junit:junit", version.ref = "junit" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt" }
+androidx-datastore-core-android = { group = "androidx.datastore", name = "datastore-core-android", version.ref = "datastore-core-android" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

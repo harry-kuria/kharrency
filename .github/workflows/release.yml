@@ -91,6 +91,8 @@ jobs:
         body: |
           ## Kharrency v${{ github.event.inputs.version_name }}
           
+          **Version Code:** ${{ github.event.inputs.version_code }}
+          
           ${{ github.event.inputs.release_notes }}
           
           ### Features:
@@ -103,12 +105,13 @@ jobs:
           - 💾 Persistent conversion history
           - 🔄 Offline caching with automatic refresh
           - ⚡ Built with Jetpack Compose and MVVM architecture
+          - 🔄 **NEW:** Over-the-Air (OTA) updates with automatic update prompts
           
           ### Installation:
           1. Download the APK file below
           2. Enable "Install from unknown sources" in your Android settings
           3. Install the APK file
-          4. Enjoy currency conversion!
+          4. Enjoy currency conversion with automatic updates!
           
           ### Technical Details:
           - Minimum Android version: 8.0 (API level 26)
@@ -116,6 +119,7 @@ jobs:
           - Architecture: MVVM with Hilt dependency injection
           - Database: Room for local caching
           - API: Free ExchangeRate-API.com
+          - Updates: Automatic OTA update checking
           
           ---
           

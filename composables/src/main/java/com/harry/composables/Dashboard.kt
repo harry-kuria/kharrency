@@ -31,11 +31,25 @@ fun Dashboard(
     val state: DashboardState by viewModel.state.collectAsState()
     var conversionHistory: List<ConversionRecord> by remember { mutableStateOf(emptyList()) }
     var isDarkMode by remember { mutableStateOf(false) } // Local theme state
-
+    
+    // Update system state
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var updateInfo by remember { mutableStateOf<com.harry.model.UpdateInfo?>(null) }
+    
     // Collect conversion history updates
     LaunchedEffect(Unit) {
         viewModel.conversionHistory.collectLatest { history ->
             conversionHistory = history
+        }
+    }
+    
+    // Check for updates on app start
+    LaunchedEffect(Unit) {
+        viewModel.checkForUpdates { update ->
+            if (update.hasUpdate && update.updateInfo != null) {
+                updateInfo = update.updateInfo
+                showUpdateDialog = true
+            }
         }
     }
 
@@ -154,6 +168,16 @@ fun Dashboard(
             
             Spacer(modifier = Modifier.height(100.dp))
         }
+    }
+    
+    // Update Dialog
+    if (showUpdateDialog && updateInfo != null) {
+        UpdateDialog(
+            updateInfo = updateInfo!!,
+            onDismiss = { showUpdateDialog = false },
+            onDownload = { showUpdateDialog = false },
+            isDarkMode = isDarkMode
+        )
     }
 }
 

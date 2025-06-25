@@ -1,26 +1,24 @@
 package com.harry.viewmodels
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.harry.model.ConversionRecord
+import com.harry.model.ConversionHistory
+import com.harry.model.UpdateCheckResponse
+import com.harry.repository.CurrencyRepository
+import com.harry.repository.ExchangeRateResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import javax.inject.Inject
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.launch
-import com.harry.model.ConversionRecord
-import com.harry.model.ConversionHistory
-import java.time.LocalDateTime
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import com.harry.repository.CurrencyRepository
-import com.harry.repository.ExchangeRateResult
-import android.os.Build
-import androidx.annotation.RequiresApi
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import java.time.LocalDateTime
 import java.time.ZoneOffset
+import javax.inject.Inject
 
 data class DashboardState(
     val amount: String = "",
@@ -32,31 +30,35 @@ data class DashboardState(
     val conversionHistory: List<ConversionRecord> = emptyList()
 )
 
+@RequiresApi(Build.VERSION_CODES.O)
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val repository: CurrencyRepository
+    private val repository: CurrencyRepository,
+    private val updateManager: UpdateManager
 ) : ViewModel() {
     private val _state = MutableStateFlow(DashboardState())
     val state: StateFlow<DashboardState> = _state.asStateFlow()
 
-    private val _conversionHistory = MutableSharedFlow<List<ConversionRecord>>()
-    val conversionHistory: SharedFlow<List<ConversionRecord>> = _conversionHistory.asSharedFlow()
+    private val _conversionHistory = MutableStateFlow<List<ConversionRecord>>(emptyList())
+    val conversionHistory: StateFlow<List<ConversionRecord>> = _conversionHistory.asStateFlow()
 
     init {
         loadConversionHistory()
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun loadConversionHistory() {
         viewModelScope.launch {
             repository.getConversionHistory().collectLatest { historyList ->
                 val convertedHistory = historyList.map { it.toConversionRecord() }
                 _state.update { it.copy(conversionHistory = convertedHistory) }
-                _conversionHistory.emit(convertedHistory)
+                _conversionHistory.value = convertedHistory
             }
         }
     }
 
     // Extension functions to convert between models
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun ConversionHistory.toConversionRecord(): ConversionRecord {
         return ConversionRecord(
             fromCurrency = fromCurrency,
@@ -138,7 +140,7 @@ class DashboardViewModel @Inject constructor(
                                 LocalDateTime.now()
                             }
                         )
-
+                        
                         // Save to database
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                             repository.insertConversionHistory(newRecord.toConversionHistory())
@@ -163,6 +165,28 @@ class DashboardViewModel @Inject constructor(
                     error = "Failed to convert currency: ${e.message}",
                     isLoading = false
                 ) }
+            }
+        }
+    }
+
+    fun checkForUpdates(onResult: (UpdateCheckResponse) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val result = updateManager.checkForUpdates(forceCheck = false)
+                onResult(result)
+            } catch (e: Exception) {
+                onResult(UpdateCheckResponse(hasUpdate = false, error = e.message))
+            }
+        }
+    }
+    
+    fun forceUpdateCheck(onResult: (UpdateCheckResponse) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val result = updateManager.checkForUpdates(forceCheck = true)
+                onResult(result)
+            } catch (e: Exception) {
+                onResult(UpdateCheckResponse(hasUpdate = false, error = e.message))
             }
         }
     }

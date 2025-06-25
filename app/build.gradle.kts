@@ -78,6 +78,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation(libs.hilt.android)
+    implementation(libs.androidx.datastore.core.android)
     kapt(libs.hilt.compiler)
     implementation(project(":composables"))
     implementation(project(":viewmodels"))
