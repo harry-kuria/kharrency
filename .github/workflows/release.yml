@@ -64,21 +64,9 @@ jobs:
         SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
         
-    - name: Sign APK
-      uses: r0adkll/sign-android-release@v1
-      id: sign_app
-      with:
-        releaseDirectory: app/build/outputs/apk/release
-        signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
-        alias: ${{ secrets.SIGNING_KEY_ALIAS }}
-        keyStorePassword: ${{ secrets.SIGNING_STORE_PASSWORD }}
-        keyPassword: ${{ secrets.SIGNING_KEY_PASSWORD }}
-      env:
-        BUILD_TOOLS_VERSION: "34.0.0"
-        
     - name: Rename APK
       run: |
-        mv app/build/outputs/apk/release/app-release-unsigned-signed.apk app/build/outputs/apk/release/Kharrency-v${{ github.event.inputs.version_name }}.apk
+        mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/Kharrency-v${{ github.event.inputs.version_name }}.apk
         
     - name: Create Release
       id: create_release
