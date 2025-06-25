@@ -14,9 +14,10 @@ on:
       whats_new:
         description: 'What'\''s New (shown in update dialog) - Use • for bullet points'
         required: true
-        default: '• Bug fixes and performance improvements
-• Updated currency exchange rates
-• Enhanced user interface'
+        default: |
+          • Bug fixes and performance improvements
+          • Updated currency exchange rates
+          • Enhanced user interface
         type: string
       release_notes:
         description: 'Additional release notes (optional)'
