@@ -1,6 +1,7 @@
 package com.harry.viewmodels
 
 import com.harry.model.ConversionHistory
+import com.harry.repository.ApkDownloadService
 import com.harry.repository.CurrencyRepository
 import com.harry.repository.ExchangeRateResult
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +21,7 @@ class DashboardViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private val repository: CurrencyRepository = mock()
     private val updateManager: UpdateManager = mock()
+    private val downloadService: ApkDownloadService = mock()
     private lateinit var viewModel: DashboardViewModel
 
     @Before
@@ -29,7 +31,7 @@ class DashboardViewModelTest {
         // Mock the repository methods called during initialization
         whenever(repository.getConversionHistory()).thenReturn(flowOf(emptyList<ConversionHistory>()))
         
-        viewModel = DashboardViewModel(repository, updateManager)
+        viewModel = DashboardViewModel(repository, updateManager, downloadService)
     }
 
     @After
